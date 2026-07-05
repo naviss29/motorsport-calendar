@@ -10,22 +10,47 @@
 
 ---
 
+## Overview
+
+**motorsport-calendar** fetches race calendars from public APIs and exports them as `.ics` files
+you can subscribe to in Google Calendar, Apple Calendar, Outlook, or any iCalendar-compatible app.
+
+```bash
+# Generate a full 2026 Formula 1 calendar
+motocal generate-f1 2026 f1-2026.ics
+
+# Generate all enabled championships in one file
+motocal generate 2026 motorsport-2026.ics
+```
+
+Import `motorsport-2026.ics` into your calendar app — every race, qualifying session, and
+practice appears automatically with the correct local time.
+
+---
+
 ## Features
 
-- **ICS export** — subscribe your calendar app (Google Calendar, Apple Calendar, Outlook…) to a live `.ics` feed
-- **Provider-agnostic** — pluggable data sources (Ergast, OpenF1, Jolpica, custom scrapers)
-- **Multi-championship** — Formula 1, MotoGP, WEC, WRC and more (provider-dependent)
-- **Typed & tested** — strict Mypy, Pydantic v2 models, Pytest test suite
-- **CLI** — `motocal` command with Typer + Rich output
+- **ICS export** — one VEVENT per session, compatible with every major calendar app
+- **Multi-championship** — Formula 1 and WEC today; more disciplines on the roadmap
+- **Extensible architecture** — add a provider in four files, zero changes elsewhere
+- **HTTP cache** — disk-based JSON cache with configurable TTL; skip with `--refresh`
+- **YAML configuration** — sources, cache path, alarm reminders, opt-out per championship
+- **CLI** — `motocal` powered by Typer + Rich, with coloured output and progress feedback
 
 ---
 
 ## Installation
 
-### From PyPI
+### With uv (recommended)
 
 ```bash
 uv tool install motorsport-calendar
+```
+
+### With pip
+
+```bash
+pip install motorsport-calendar
 ```
 
 ### From source
@@ -40,41 +65,82 @@ uv sync --all-extras
 
 ## Usage
 
+### Formula 1
+
 ```bash
-# Show help
-motocal --help
+# 2026 season (cached by default)
+motocal generate-f1 2026 f1-2026.ics
+
+# Force re-download from the API
+motocal generate-f1 2026 f1-2026.ics --refresh
+```
+
+### WEC — FIA World Endurance Championship
+
+```bash
+motocal generate-wec 2026 wec-2026.ics
+```
+
+> **Note:** The WEC source is not yet implemented. The command architecture is ready;
+> the data source is on the roadmap (v0.2).
+
+### All enabled championships
+
+```bash
+# Fetches every enabled provider and merges them into one ICS file
+motocal generate 2026 motorsport-2026.ics
+```
+
+If one provider fails (network error, unimplemented source…), the others continue.
+A per-provider summary is displayed:
+
+```
+Génération calendrier 2026 — 2 providers activés…
+  ✓ formula1 : 24 événements
+  ✗ wec : source non implémentée
+
+Export terminé : motorsport-2026.ics (24 événements, 72 sessions)
+```
+
+### Other commands
+
+```bash
+# List all registered providers
+motocal providers
 
 # Show version
 motocal version
-
-# List available providers
-motocal providers
-
-# Export a calendar
-motocal export \
-  --provider ergast \
-  --championship formula1 \
-  --year 2025 \
-  --output f1-2025.ics
 ```
 
-### Python API
+---
 
-```python
-import asyncio
-from pathlib import Path
-from motorsport_calendar.core import CalendarService
+## Configuration
 
-# from motorsport_calendar.providers.ergast import ErgastProvider  # coming soon
-# from motorsport_calendar.exporters.ics import ICSExporter        # coming soon
+Create `config.yaml` in your working directory (or `~/.config/motorsport-calendar/config.yaml`).
+All keys are optional — sensible defaults apply when absent.
 
-async def main():
-    service = CalendarService()
-    # service.register_provider(ErgastProvider())
-    # service.register_exporter(ICSExporter())
-    # await service.export_championship("ergast", "formula1", 2025, "ics", Path("f1.ics"))
+```yaml
+# Timezone for display (IANA format)
+timezone: Europe/Paris
 
-asyncio.run(main())
+cache:
+  enabled: true
+  path: ~/.cache/motorsport-calendar
+  ttl_hours: 24        # re-download after 24 h
+
+ics:
+  alarm_minutes: 30    # VALARM reminder before each session (0 = disabled)
+
+providers:
+  formula1:
+    enabled: true
+    source: openf1     # openf1.org API — covers 2023 onwards
+  wec:
+    enabled: true
+    source: official   # not yet implemented
+  # Disable a future championship without touching any code:
+  # f2:
+  #   enabled: false
 ```
 
 ---
@@ -82,140 +148,134 @@ asyncio.run(main())
 ## Architecture
 
 ```
-motorsport_calendar/
-├── cli.py                  # Typer CLI — presentation only, no business logic
-├── core/
-│   └── service.py          # CalendarService — wires providers ↔ exporters
-├── providers/
-│   └── base.py             # Provider ABC — implement to add a data source
-├── exporters/
-│   └── base.py             # Exporter ABC — implement to add an output format
-├── models/
-│   ├── event.py            # Event + SessionType
-│   ├── circuit.py          # Circuit
-│   └── championship.py     # Championship
-└── utils/
-    └── logging.py          # Rich-based logging
-
-tests/
-├── conftest.py             # Shared fixtures
-├── test_models.py          # Model validation tests
-└── test_cli.py             # CLI smoke tests
-
-.github/workflows/
-├── ci.yml                  # Lint + tests on push/PR (Python 3.12 & 3.13)
-└── publish.yml             # Publish to PyPI on tag push
+config.yaml
+     │
+     ▼ registry.enabled()
+  ┌──────────┬──────────┐
+  │Formula 1 │   WEC    │  …more (auto-discovered)
+  │ Provider │ Provider │
+  └────┬─────┴────┬─────┘
+       │          │
+  OpenF1      Official
+  Source       Source
+       │          │
+       ▼          ▼
+     Events     Events
+        └────┬────┘
+             ▼
+       IcsExporter
+             ▼
+       calendar.ics
 ```
+
+Each provider package **auto-registers** itself at import time via `ProviderRegistry`.
+Each source auto-registers via `SourceRegistry`. The CLI calls `registry.discover()` once —
+no hardcoded lists anywhere.
 
 ### Key concepts
 
 | Concept | Role |
 |---|---|
-| `Provider` | Fetches raw data from a remote API and maps it to shared models |
-| `Exporter` | Serializes a `Championship` to a file format (ICS, JSON, CSV…) |
-| `CalendarService` | Orchestrates `Provider` + `Exporter`, holds no data itself |
-| `Event` | One session (race, quali, practice) with start/end times |
-| `Championship` | A full season: name, year, sport, flat list of `Event`s |
-| `Circuit` | Circuit metadata with IANA timezone |
-
-### Adding a provider
-
-Create a class that extends `Provider` and implement two methods:
-
-```python
-from motorsport_calendar.providers.base import Provider
-from motorsport_calendar.models import Championship, Event
-
-class MyProvider(Provider):
-    @property
-    def name(self) -> str:
-        return "my-provider"
-
-    @property
-    def supported_championships(self) -> list[str]:
-        return ["formula1"]
-
-    async def fetch_championship(self, championship_id: str, year: int) -> Championship:
-        ...  # fetch + map to Championship
-
-    async def fetch_events(self, championship_id: str, year: int) -> list[Event]:
-        ...  # fetch + map to list[Event]
-```
-
-### Adding an exporter
-
-```python
-from pathlib import Path
-from motorsport_calendar.exporters.base import Exporter
-from motorsport_calendar.models import Championship
-
-class MyExporter(Exporter):
-    @property
-    def name(self) -> str:
-        return "my-format"
-
-    @property
-    def file_extension(self) -> str:
-        return "txt"
-
-    def export(self, championship: Championship, output: Path) -> None:
-        output.write_text(self.export_to_string(championship))
-
-    def export_to_string(self, championship: Championship) -> str:
-        return "\n".join(e.name for e in championship.events)
-```
+| `Provider` | Fetches data from one source and maps it to `list[Event]` |
+| `Source` | Encapsulates the HTTP/scraping logic for one data endpoint |
+| `ProviderRegistry` | Auto-discovers and holds all registered provider factories |
+| `SourceRegistry` | Auto-discovers and holds all registered source factories |
+| `IcsExporter` | Serialises a `list[Event]` to an RFC 5545 `.ics` file |
+| `HttpCache` | Disk-based JSON cache keyed by SHA-256(url + params) |
+| `ConfigService` | Reads `config.yaml` and merges with Pydantic defaults |
 
 ---
 
-## Development
+## Championships
 
-```bash
-# Install dev dependencies
-uv sync --all-extras
-
-# Run tests
-uv run pytest
-
-# Lint
-uv run ruff check motorsport_calendar tests
-
-# Format
-uv run ruff format motorsport_calendar tests
-
-# Type check
-uv run mypy motorsport_calendar
-
-# Install pre-commit hooks
-uv run pre-commit install
-```
+| Championship | Status | Source | Availability |
+|---|---|---|---|
+| Formula 1 | ✅ Available | [openf1.org](https://openf1.org) | 2023 → present |
+| WEC | 🟡 Architecture ready | fiawec.com (TODO) | v0.2 |
+| ELMS | 🔴 Planned | TBD | v0.3 |
+| Michelin Le Mans Cup | 🔴 Planned | TBD | v0.3 |
+| Road to Le Mans | 🔴 Planned | TBD | v0.3 |
+| Formula 2 | 🔴 Planned | TBD | v0.3 |
+| Formula 3 | 🔴 Planned | TBD | v0.3 |
+| F1 Academy | 🔴 Planned | TBD | v0.4 |
 
 ---
 
 ## Roadmap
 
-- [ ] `ErgastProvider` — Formula 1 (historical data)
-- [ ] `OpenF1Provider` — Formula 1 (live, 2023+)
-- [ ] `ICSExporter` — standard `.ics` / iCalendar format
-- [ ] `JSONExporter` — machine-readable JSON
-- [ ] MotoGP provider
-- [ ] WEC provider
-- [ ] GitHub Release ICS hosting
-- [ ] PyPI publish
+| Version | Highlights |
+|---|---|
+| **v0.1** ✅ | Formula 1 via OpenF1, WEC architecture, multi-provider CLI, cache, config |
+| **v0.2** | `ErgastSource` (F1 1950+), `OfficialWecSource`, VEVENT descriptions |
+| **v0.3** | ELMS, Le Mans Cup, Road to Le Mans, Formula 2/3 providers |
+| **v1.0** | PyPI release, MkDocs documentation, stable public API |
+
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the detailed per-version breakdown.
 
 ---
 
-## Contributing
+## Contribution
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-provider`
-3. Implement your provider or exporter
-4. Add tests
-5. Open a pull request
+### Run the tests
 
-Please run `pre-commit run --all-files` before submitting.
+```bash
+# All tests with coverage
+uv run pytest
+
+# A specific file
+uv run pytest tests/test_cli_generate.py -v
+
+# Lint + type check
+uv run ruff check motorsport_calendar tests
+uv run mypy motorsport_calendar
+```
+
+### Add a provider
+
+1. Create `motorsport_calendar/providers/mychampionship/`
+2. Add `source.py` (abstract `Source` class) and `provider.py` (concrete `Provider`)
+3. Add `sources/official.py` with the HTTP/scraping implementation
+4. Register in `__init__.py`:
+
+```python
+# providers/mychampionship/__init__.py
+from motorsport_calendar.core.registry import registry
+from .provider import MyProvider
+
+def _make_provider(source):
+    return MyProvider(source)
+
+registry.register("mychampionship", _make_provider)
+```
+
+5. Register the source in `sources/__init__.py`:
+
+```python
+# providers/mychampionship/sources/__init__.py
+from motorsport_calendar.core.source_registry import source_registry
+from .official import OfficialMySource
+
+source_registry.register(
+    "mychampionship", "official",
+    lambda cache, refresh: OfficialMySource(cache=cache, refresh=refresh),
+)
+```
+
+That's it — no other files to touch. `motocal generate` picks it up automatically.
+
+### Commit conventions
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat(cli): add generate-wec command
+fix(openf1): handle missing date_end gracefully
+docs(readme): update championship table
+test(registry): add enabled() edge cases
+```
 
 ---
 
 ## License
 
-[MIT](LICENSE) — © 2026 Alan Yvenou
+[MIT](LICENSE) © 2026 Alan Yvenou

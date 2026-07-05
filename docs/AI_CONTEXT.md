@@ -9,7 +9,7 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 12 — generate (agrégateur multi-provider) terminé
+- **Phase** : Sprint 13 — README, CHANGELOG, ROADMAP — prêt pour le tag v0.1.0
 - **Tests** : 306 passants, 0 échouants — couverture 92 %
 - **Branche** : `master`
 
