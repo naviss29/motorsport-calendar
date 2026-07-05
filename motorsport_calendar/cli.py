@@ -156,6 +156,91 @@ def generate_f1(
     )
 
 
+@app.command("generate-f2")
+def generate_f2(
+    year: Annotated[int, typer.Argument(help="Formula 2 season year (e.g. 2025)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Formula 2 calendar and export it as an ICS file."""
+    import asyncio
+
+    import httpx
+
+    from motorsport_calendar.cache import HttpCache
+    from motorsport_calendar.config import ConfigService
+    from motorsport_calendar.core.registry import registry
+    from motorsport_calendar.core.source_registry import source_registry
+    from motorsport_calendar.exporters.ics import IcsExporter
+
+    config = ConfigService()
+
+    cache: HttpCache | None = None
+    if config.cache.enabled:
+        cache = HttpCache(
+            cache_dir=config.cache.resolved_path,
+            ttl=config.cache.ttl_seconds,
+        )
+
+    registry.discover()
+    source_registry.discover()
+
+    provider_cfg = config.providers.get("formula2")
+    if provider_cfg is None:
+        from motorsport_calendar.config.models import ProviderConfig
+        provider_cfg = ProviderConfig(source="f1calendar")
+
+    source_name = provider_cfg.source or "f1calendar"
+
+    try:
+        make_source = source_registry.get("formula2", source_name)
+    except KeyError as exc:
+        err_console.print(str(exc))
+        raise typer.Exit(code=1)
+
+    source = make_source(cache, refresh)
+
+    try:
+        make_provider = registry.get("formula2")
+    except KeyError as exc:
+        err_console.print(str(exc))
+        raise typer.Exit(code=1)
+
+    provider = make_provider(source)
+
+    async def _fetch() -> list:
+        return await provider.fetch_events("formula2", year)
+
+    cache_note = " [yellow](--refresh)[/]" if refresh else ""
+    console.print(
+        f"Fetching F2 [bold cyan]{year}[/] calendar "
+        f"via [green]{source_name}[/]…{cache_note}"
+    )
+
+    try:
+        events = asyncio.run(_fetch())
+    except httpx.HTTPStatusError as exc:
+        err_console.print(
+            f"F2 source error {exc.response.status_code}: {exc.request.url}"
+        )
+        raise typer.Exit(code=1)
+    except httpx.TimeoutException:
+        err_console.print("F2 source timeout (10 s). Try again later.")
+        raise typer.Exit(code=1)
+
+    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
+
+    count = len(events)
+    sessions_count = sum(len(e.sessions) for e in events)
+    console.print(
+        f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
+        f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+    )
+
+
 @app.command("generate-wec")
 def generate_wec(
     year: Annotated[int, typer.Argument(help="WEC season year (e.g. 2024)")],

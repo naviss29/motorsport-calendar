@@ -7,7 +7,64 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased]
+## [0.2.0] — 2026-07-05
+
+### Fixed
+
+- **`typer[all]` extra supprimé** — typer 0.26.x n'expose pas d'extra `all` ; causait un WARNING
+  à chaque `pip install`. Remplacé par `typer>=0.12` (rich reste une dépendance directe).
+- **`python-dateutil` supprimé** — dépendance déclarée mais jamais utilisée dans le code.
+- **Version `0.1.0` → `0.2.0`** dans `pyproject.toml` et `__init__.py` (incohérence depuis Sprint 15).
+
+### Added
+
+- **`python -m motorsport_calendar`** — `__main__.py` ajouté : permet de lancer la CLI sans que le
+  dossier `Scripts` soit dans le PATH (utile sur Windows). Toutes les commandes sont disponibles.
+- **Tests de packaging** (`tests/test_packaging.py`, 36 tests) — vérifient que le package installé
+  est correctement câblé : version metadata, `python -m` entry point, commandes CLI enregistrées,
+  imports publics, auto-découverte des registries.
+- **CI multi-plateforme** — ajout de `macos-latest` et `windows-latest` dans la matrice GitHub Actions.
+
+- **Support Series Framework** (`providers/support_series/f1calendar_base.py`) — base commune pour
+  F2, F3, F1 Academy, Porsche Supercup. Extrait la logique partagée de `F1CalendarSource` :
+  - `F1CalendarBaseSource(JsonDataSource, ABC)` — `__init__`, `get_season`, `fetch_json`,
+    `_resolve_circuit_data`, `_build_circuit`, `_build_event` tous paramétrés via 4 propriétés abstraites.
+  - `_build_session()` — fonction pure module-level, générique.
+  - Chaque nouveau support series ne nécessite que ~15 lignes : `_series_key`, `_session_map`,
+    `_circuit_data`, `_make_championship`.
+  - `F1CalendarSource` (F2) refactorisée pour hériter de la base — aucun changement de comportement.
+  - 36 nouveaux tests dans `tests/test_f1calendar_base.py`.
+
+- **Formula 2 provider** — `motocal generate-f2 YEAR OUTPUT.ics` génère le calendrier FIA F2 complet.
+  - `Formula2Provider` + `Formula2Source` (ABC) — même architecture que F1/WEC.
+  - `F1CalendarSource` — source JSON MIT via `github.com/sportstimes/f1`, un seul GET par saison.
+    Requête : `https://raw.githubusercontent.com/sportstimes/f1/main/_db/f2/{year}.json`.
+    Sessions mappées : FP (45 min), Qualifying (30 min), Sprint Race (45 min), Feature Race (65 min).
+    23 circuits avec fuseaux IANA ; fallback `"Unknown"` / `"UTC"` pour les circuits inconnus.
+  - Auto-inclus dans `motocal generate` (opt-out via `config.yaml`).
+  - Enregistré sous `source: f1calendar` dans `config.yaml`.
+  - `config.example.yaml` mis à jour avec la section `formula2`.
+  - 74 nouveaux tests (F1CalendarSource : 44, Formula2Provider : 9, CLI generate-f2 : 21).
+
+- **Data Acquisition Layer** (`motorsport_calendar/core/datasource/`) — abstract interfaces
+  separating raw data retrieval from domain mapping:
+  - `DataSource` — common ABC marker
+  - `JsonDataSource` — abstract `fetch_json(url, params)` for REST JSON APIs
+  - `HtmlDataSource` — abstract `fetch_html(url)` for HTML scraping
+  - `IcsDataSource` — abstract `fetch_ics(url)` for iCalendar feeds
+- **`OpenF1Source` migrated to `JsonDataSource`** — implements `fetch_json`, validating the
+  DAL pattern. `_get_json` is preserved as a thin wrapper for backward-compatible test mocks.
+  Zero change to the public `get_season()` API.
+- 25 new tests in `tests/test_datasource.py`.
+
+- **`JolpicaSource`** — full implementation of `Formula1Source` using the Jolpica API
+  (`http://api.jolpi.ca/ergast/f1/{year}/races.json`), the Ergast-compatible successor
+  (Apache-2.0). Covers F1 data from 1950 onwards. Single request per season; session end
+  times inferred from session type; 34 circuits with IANA timezones; historical races without
+  time data fall back to noon UTC. Registered as `source: jolpica` in `config.yaml`.
+- `ErgastSource` is now a backward-compatibility alias for `JolpicaSource` (Ergast was shut
+  down end-2024). Its test now asserts the alias relationship.
+- 43 new tests in `tests/test_jolpica_source.py`.
 
 ---
 

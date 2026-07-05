@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 import httpx
 
 from motorsport_calendar.cache import HttpCache
+from motorsport_calendar.core.datasource import JsonDataSource
 from motorsport_calendar.models import (
     Championship,
     ChampionshipCategory,
@@ -64,7 +66,7 @@ _CIRCUIT_TZ_MAP: dict[str, str] = {
 }
 
 
-class OpenF1Source(Formula1Source):
+class OpenF1Source(Formula1Source, JsonDataSource):
     """Fetches F1 season data from the OpenF1 REST API.
 
     Makes two requests per season: ``/meetings`` (race weekends) and
@@ -122,22 +124,30 @@ class OpenF1Source(Formula1Source):
         return events
 
     # ------------------------------------------------------------------
-    # Internal
+    # JsonDataSource interface
     # ------------------------------------------------------------------
 
-    async def _get_json(self, path: str, params: dict[str, int]) -> list[dict]:
-        url = f"{_BASE_URL}{path}"
+    async def fetch_json(self, url: str, params: dict[str, Any]) -> list | dict:
+        """Fetch JSON from *url* with *params*, using cache when available."""
+        path = url.removeprefix(_BASE_URL)
 
-        async def _do_fetch(_url: str, _params: dict) -> list[dict]:
+        async def _do_fetch(_url: str, _params: dict) -> list | dict:
             response = await self._client.get(path, params=_params)
             response.raise_for_status()
             return response.json()  # type: ignore[no-any-return]
 
         if self._cache is not None:
-            result = await self._cache.get_json(url, params, _do_fetch, refresh=self._refresh)
-            return result  # type: ignore[return-value]
+            return await self._cache.get_json(url, params, _do_fetch, refresh=self._refresh)
 
         return await _do_fetch(url, params)
+
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+
+    async def _get_json(self, path: str, params: dict[str, Any]) -> list[dict]:
+        """Thin wrapper around fetch_json; kept for backward-compat with existing test mocks."""
+        return await self.fetch_json(f"{_BASE_URL}{path}", params)  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------

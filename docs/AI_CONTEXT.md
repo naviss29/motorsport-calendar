@@ -8,9 +8,9 @@
 ## État du projet
 
 - **Nom** : motorsport-calendar
-- **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 14 — Étude des sources de données terminée (`docs/DATA_SOURCES.md`)
-- **Tests** : 306 passants, 0 échouants — couverture 92 %
+- **Version** : 0.2.0 (alpha)
+- **Phase** : Sprint 19 — Packaging & QA (version 0.2.0, __main__.py, tests packaging, CI multi-OS)
+- **Tests** : 520 passants, 0 échouants — couverture 94 %
 - **Branche** : `master`
 
 ---
@@ -53,10 +53,22 @@ motorsport_calendar/
 │   │   ├── provider.py      # Formula1Provider — délègue à Formula1Source
 │   │   ├── source.py        # Formula1Source (ABC) — get_season(year)
 │   │   └── sources/
-│   │       ├── openf1.py    # ✅ IMPLÉMENTÉ — API openf1.org + HttpCache
-│   │       ├── ergast.py    # 🔴 STUB — raise NotImplementedError
+│   │       ├── jolpica.py   # ✅ IMPLÉMENTÉ — API api.jolpi.ca (Ergast successor, 1950+)
+│   │       ├── openf1.py    # ✅ IMPLÉMENTÉ — API openf1.org + HttpCache + JsonDataSource
+│   │       ├── ergast.py    # ✅ alias → JolpicaSource (Ergast arrêté fin 2024)
 │   │       ├── official.py  # 🔴 STUB — raise NotImplementedError
 │   │       └── cached.py    # 🔴 STUB — raise NotImplementedError
+│   ├── formula2/
+│   │   ├── __init__.py      # ✅ auto-register : registry.register("formula2", _make_provider)
+│   │   ├── provider.py      # Formula2Provider — délègue à Formula2Source
+│   │   ├── source.py        # Formula2Source (ABC) — get_season(year)
+│   │   └── sources/
+│   │       ├── __init__.py  # ✅ source_registry.register("formula2", "f1calendar", ...)
+│   │       └── f1calendar.py # ✅ F1CalendarSource(F1CalendarBaseSource, Formula2Source) — config F2 uniquement
+│   ├── __main__.py          # ✅ python -m motorsport_calendar — fallback quand Scripts pas dans PATH
+│   ├── support_series/      # ✅ Framework partagé F2/F3/Academy/Supercup
+│   │   ├── __init__.py      # package (non-provider)
+│   │   └── f1calendar_base.py # F1CalendarBaseSource + _build_session — toute la logique HTTP/cache/mapping
 │   └── wec/
 │       ├── __init__.py      # ✅ auto-register : registry.register("wec", _make_provider)
 │       ├── provider.py      # ✅ WecProvider — délègue à WecSource
@@ -72,6 +84,12 @@ motorsport_calendar/
 │
 ├── core/
 │   ├── __init__.py          # export ProviderRegistry + registry + SourceRegistry + source_registry
+│   ├── datasource/          # ✅ Data Acquisition Layer — interfaces abstraites
+│   │   ├── __init__.py      # export DataSource, JsonDataSource, HtmlDataSource, IcsDataSource
+│   │   ├── base.py          # DataSource(ABC) — marqueur commun
+│   │   ├── json_source.py   # JsonDataSource — fetch_json(url, params) → list | dict
+│   │   ├── html_source.py   # HtmlDataSource — fetch_html(url) → str
+│   │   └── ics_source.py    # IcsDataSource  — fetch_ics(url) → str
 │   ├── registry.py          # ✅ ProviderRegistry — register/get/list_all/enabled/discover
 │   ├── source_registry.py   # ✅ SourceRegistry — register/get/list_for/list_all/discover
 │   └── service.py           # 🔴 NON IMPLÉMENTÉ — placeholder
@@ -80,7 +98,7 @@ motorsport_calendar/
 │   ├── base.py              # Exporter (ABC) — export / export_to_string
 │   └── ics.py               # ✅ IMPLÉMENTÉ — RFC 5545, 1 VEVENT par Session
 │
-├── cli.py                   # Typer CLI — generate-f1 (--refresh), providers, export (stub)
+├── cli.py                   # Typer CLI — generate-f1, generate-f2, generate-wec (--refresh), providers, generate, export (stub)
 └── utils/logging.py         # 🔴 NON IMPLÉMENTÉ — placeholder
 ```
 
@@ -100,6 +118,11 @@ motorsport_calendar/
 10. **ProviderRegistry** — `register/get/list_all/enabled/discover`, auto-enregistrement à l'import de `__init__.py`
 11. **SourceRegistry** — `register/get/list_for/list_all/discover`, clé `(championship, source_name)`, auto-enregistrement dans `sources/__init__.py`
 12. **CLI `generate`** — `motocal generate YEAR OUTPUT.ics [--refresh]` — agrège tous les providers activés en un seul ICS, résilience partielle (provider qui échoue → ✗ résumé, les autres continuent), tri chronologique
+13. **`JolpicaSource`** — données F1 historiques depuis 1950 via `api.jolpi.ca` (successeur Ergast Apache-2.0). `ErgastSource` = alias backward-compat. Enregistrée sous `"jolpica"`.
+14. **Data Acquisition Layer** — `core/datasource/` : `DataSource`, `JsonDataSource`, `HtmlDataSource`, `IcsDataSource`. `OpenF1Source` migrée vers `JsonDataSource` (concept validé).
+15. **Formula2Provider + F1CalendarSource** — support complet FIA F2 via JSON MIT (f1calendar.com). Sessions : FP (45 min), Qualifying (30 min), Sprint Race (45 min), Feature Race (65 min). 23 circuits IANA. CLI `generate-f2 YEAR OUTPUT.ics`. Auto-inclus dans `generate`.
+16. **Support Series Framework** — `F1CalendarBaseSource(JsonDataSource, ABC)` dans `providers/support_series/f1calendar_base.py`. 4 propriétés abstraites (`_series_key`, `_session_map`, `_circuit_data`, `_make_championship`). Tout le reste hérité. F3/Academy/Supercup = ~15 lignes chacun.
+17. **Packaging v0.2.0** — `pyproject.toml` : version 0.2.0, `typer>=0.12` (plus `[all]`), `python-dateutil` supprimé, Python 3.14 classifié. `__main__.py` : `python -m motorsport_calendar` opérationnel. CI : matrix Ubuntu + macOS + Windows × Python 3.12/3.13.
 
 ---
 
@@ -107,15 +130,10 @@ motorsport_calendar/
 
 **Prochaines tâches recommandées** (voir `docs/DATA_SOURCES.md` pour l'étude complète) :
 
-1. **`JolpicaSource`** (ex-ErgastSource) — données historiques F1 (1950+)
-   - Endpoint : `http://api.jolpi.ca/ergast/f1/{year}/races.json`
-   - Licence : Apache-2.0 — ⚠️ **Ergast est arrêté fin 2024, utiliser Jolpica**
-   - Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py` (renommer en `jolpica.py`)
-   - Tests cibles : `tests/test_jolpica_source.py`
-2. **`OfficialWecSource`** — scraping HTML de `fiawec.com/en/season`
+1. **`OfficialWecSource`** — scraping HTML de `fiawec.com/en/season`
    - Inspecter les XHR en DevTools avant d'implémenter
-3. **`ELMSSource`** — scraping `europeanlemansseries.com` (XHR d'abord, HTML sinon)
-4. **`Formula2Source`** — scraping `fiaformula2.com/Calendar` + venues réutilisées du provider F1
+2. **`ELMSSource`** — scraping `europeanlemansseries.com` (XHR d'abord, HTML sinon)
+3. **`Formula3Provider`** — même pattern que Formula 2, source à identifier
 
 ---
 
@@ -134,6 +152,14 @@ motorsport_calendar/
 - **Config** : `ConfigService(config_path=None)` — cherche `config.yaml` dans CWD puis `~/.config/motorsport-calendar/`. Aucun fichier → défauts complets.
 - **config.yaml** : ignoré par git (personnel). `config.example.yaml` commité comme référence.
 - **VALARM** : `IcsExporter(alarm_minutes=N)` — N>0 → `TRIGGER:-PTNm` dans chaque VEVENT. CLI lit `config.ics.alarm_minutes`.
+- **Data Acquisition Layer (DAL)** : `core/datasource/` — `DataSource` (ABC marker), `JsonDataSource` (abstract `fetch_json(url, params)`), `HtmlDataSource` (abstract `fetch_html(url)`), `IcsDataSource` (abstract `fetch_ics(url)`). Les sources implémentent l'interface DAL de leur catégorie **en plus** de l'interface domaine (`Formula1Source`, etc.). `OpenF1Source` et `F1CalendarSource` implémentent `JsonDataSource`.
+- **F1CalendarSource** : config F2 uniquement — `_series_key="f2"`, `_SESSION_MAP`, `_CIRCUIT_DATA`, `_make_championship`. URL construite par la base : `_BASE_URL/{series_key}/{year}.json`. `event_uid = f"f1calendar-{series_key}-{year}-{round}@motorsport-calendar"`. Pas de wrapper `_get_json` (aucun legacy mock).
+- **F1CalendarBaseSource** : dans `providers/support_series/f1calendar_base.py`. `__init__(client, cache, *, refresh)`, `get_season(year)`, `fetch_json(url, params)`, `_resolve_circuit_data(slug)`, `_build_circuit(event_data)`, `_build_event(championship, event_data, year)`. `_build_session(timestamp, type, duration, title)` = fonction module-level pure.
+- **Mock pour tests support series** : `patch.object(F1CalendarSource, "fetch_json", AsyncMock(return_value=...))` — fonctionne même si `fetch_json` est hérité de la base (patch sur la sous-classe).
+- **HttpCache mock** : depuis Sprint 18, patcher `"motorsport_calendar.providers.support_series.f1calendar_base.HttpCache"` (et non plus `f1calendar.HttpCache`).
+- **Ajouter un support series** (F3, Academy, Supercup) : créer `providers/XYZ/` avec source héritant de `F1CalendarBaseSource` — 4 overrides, ~15 lignes. Même pattern que `F1CalendarSource`.
+- **JolpicaSource** : endpoint `http://api.jolpi.ca/ergast/f1/{year}/races.json?limit=100`. Requête unique par saison. Sessions extraites des champs `FirstPractice`, `SecondPractice`, `ThirdPractice`, `Qualifying`, `SprintQualifying`, `Sprint` + champ race (`date`+`time` au top level). Durées inférées : FP 60 min, Qualifying 60 min, SprintQualifying 45 min, Sprint 35 min, Race 130 min. `circuitId` snake_case → IANA timezone. Fallback noon UTC si `time` absent (pré-2000). Enregistrée sous `"jolpica"` dans SourceRegistry.
+- **ErgastSource** : alias backward-compat pour `JolpicaSource` (Ergast arrêté fin 2024). Non enregistrée dans SourceRegistry — utiliser `source: jolpica` dans config.yaml.
 - **Architecture figée (Sprint 10)** : ProviderRegistry + SourceRegistry = architecture finale. Pas de refactoring structurel prévu.
 - **ProviderRegistry** : singleton `motorsport_calendar.core.registry.registry`. Factory signature : `(source) → Provider`. `registry.discover()` importe chaque `providers/X/__init__.py`.
 - **SourceRegistry** : singleton `motorsport_calendar.core.source_registry.source_registry`. Clé `(championship_id, source_name)`. Factory signature : `(cache, refresh) → Source`. `source_registry.discover()` importe chaque `providers/X/sources/__init__.py`.
@@ -152,7 +178,7 @@ motorsport_calendar/
 | Item | Impact | Priorité |
 |---|---|---|
 | `export` CLI est un stub (exit 1) | Commande inutilisable | HAUTE |
-| `ErgastSource` non implémentée | Pas de données historiques | HAUTE |
+| `ErgastSource` → alias `JolpicaSource` | ✅ Résolu — Sprint 15 | — |
 | `CachedFormula1Source` non implémentée | Appels répétés à l'API | HAUTE |
 | Cache `.cache/` en CWD (pas `~/.cache/`) | Moins adapté au déploiement | BASSE |
 | `core/service.py` vide | Architecture incomplète | MOYENNE |

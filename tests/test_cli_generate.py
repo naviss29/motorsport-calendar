@@ -27,6 +27,7 @@ from motorsport_calendar.models import (
     SessionType,
 )
 from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
+from motorsport_calendar.providers.formula2.sources.f1calendar import F1CalendarSource
 from motorsport_calendar.providers.wec.sources.official import OfficialWecSource
 
 runner = CliRunner()
@@ -266,10 +267,13 @@ class TestGenerateErrors:
     def test_all_providers_fail_exits_one(self, tmp_path: Path) -> None:
         request = httpx.Request("GET", "https://api.openf1.org/v1/meetings")
         response = httpx.Response(503, request=request)
-        f1_fail = AsyncMock(
-            side_effect=httpx.HTTPStatusError("503", request=request, response=response)
-        )
-        with patch.object(OpenF1Source, "_get_json", f1_fail):
+        http_fail = httpx.HTTPStatusError("503", request=request, response=response)
+        f1_fail = AsyncMock(side_effect=http_fail)
+        f2_fail = AsyncMock(side_effect=http_fail)
+        with (
+            patch.object(OpenF1Source, "_get_json", f1_fail),
+            patch.object(F1CalendarSource, "fetch_json", f2_fail),
+        ):
             result = runner.invoke(app, ["generate", "2024", str(tmp_path / "all.ics")])
         assert result.exit_code == 1
 
@@ -277,10 +281,13 @@ class TestGenerateErrors:
         output = tmp_path / "all.ics"
         request = httpx.Request("GET", "https://api.openf1.org/v1/meetings")
         response = httpx.Response(503, request=request)
-        f1_fail = AsyncMock(
-            side_effect=httpx.HTTPStatusError("503", request=request, response=response)
-        )
-        with patch.object(OpenF1Source, "_get_json", f1_fail):
+        http_fail = httpx.HTTPStatusError("503", request=request, response=response)
+        f1_fail = AsyncMock(side_effect=http_fail)
+        f2_fail = AsyncMock(side_effect=http_fail)
+        with (
+            patch.object(OpenF1Source, "_get_json", f1_fail),
+            patch.object(F1CalendarSource, "fetch_json", f2_fail),
+        ):
             runner.invoke(app, ["generate", "2024", str(output)])
         assert not output.exists()
 

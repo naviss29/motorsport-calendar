@@ -37,16 +37,16 @@
 
 ---
 
-## v0.2.0 — Sources enrichies
+## v0.2.0 — Sources enrichies + Formula 2 ✅ (2026-07-05)
 
-| Fonctionnalité | Priorité |
+| Fonctionnalité | Statut |
 |---|---|
-| `JolpicaSource` — données historiques F1 (1950+), `api.jolpi.ca` (successeur Ergast, Apache-2.0) | 🔴 HAUTE |
-| `OfficialWecSource` — calendrier FIA WEC, scraping `fiawec.com` (voir DATA_SOURCES.md) | 🔴 HAUTE |
-| `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | 🟡 MOYENNE |
-| `URL` dans les VEVENTs (lien source officielle) | 🟡 MOYENNE |
-| Retry avec backoff exponentiel sur erreurs HTTP (max 3 tentatives) | 🟢 BASSE |
-| Validation de l'année dans `generate-f1` (OpenF1 couvre 2023+) | 🟢 BASSE |
+| `JolpicaSource` — données historiques F1 (1950+), `api.jolpi.ca` (successeur Ergast, Apache-2.0) | ✅ |
+| Data Acquisition Layer (`core/datasource/`) — `JsonDataSource`, `HtmlDataSource`, `IcsDataSource` | ✅ |
+| `Formula2Provider` + `F1CalendarSource` — calendrier FIA F2 complet (JSON MIT, f1calendar.com) | ✅ |
+| CLI `generate-f2 YEAR OUTPUT.ics` | ✅ |
+| `generate` inclut automatiquement F2 (opt-out via config) | ✅ |
+| 448 tests — couverture 93 % | ✅ |
 
 ---
 
@@ -56,13 +56,15 @@ Sources documentées dans `docs/DATA_SOURCES.md`.
 
 | Fonctionnalité | Source | Priorité |
 |---|---|---|
+| `OfficialWecSource` — calendrier FIA WEC | Scraping `fiawec.com` (voir DATA_SOURCES.md) | 🔴 HAUTE |
 | `ELMSProvider` — European Le Mans Series | Scraping `europeanlemansseries.com` (XHR first) | 🔴 HAUTE |
-| `Formula2Provider` | Scraping `fiaformula2.com` + venues F1 | 🔴 HAUTE |
 | `Formula3Provider` | Scraping `fiaformula3.com` + venues F1 | 🟡 MOYENNE |
 | `LeMansProvider` — Michelin Le Mans Cup + Road to Le Mans | Scraping `lemanscup.com` (JS-rendered) | 🟡 MOYENNE |
 | `F1AcademyProvider` | Scraping `f1academy.com` + venues F1 | 🟡 MOYENNE |
 | `PorscheSupercupProvider` | Scraping `racing.porsche.com` + venues F1 | 🟢 BASSE |
 | Export JSON (machine-readable) | — | 🟢 BASSE |
+| `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | — | 🟡 MOYENNE |
+| `URL` dans les VEVENTs (lien source officielle) | — | 🟡 MOYENNE |
 
 ---
 

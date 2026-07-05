@@ -120,9 +120,12 @@ class TestSourceStubs:
         with pytest.raises(NotImplementedError):
             await OfficialFormula1Source().get_season(2025)
 
-    async def test_ergast_source_raises_not_implemented(self) -> None:
-        with pytest.raises(NotImplementedError):
-            await ErgastSource().get_season(2025)
+    def test_ergast_source_is_jolpica_alias(self) -> None:
+        # ErgastSource is now an alias for JolpicaSource (Ergast was shut down end-2024).
+        # Its behaviour is covered in test_jolpica_source.py.
+        from motorsport_calendar.providers.formula1.sources.jolpica import JolpicaSource
+
+        assert ErgastSource is JolpicaSource
 
     def test_openf1_source_is_implemented(self) -> None:
         # OpenF1Source no longer raises NotImplementedError — it is a real implementation.
