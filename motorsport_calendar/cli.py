@@ -61,6 +61,48 @@ def providers() -> None:
     console.print("[yellow]No providers registered yet.[/]")
 
 
+@app.command("generate-f1")
+def generate_f1(
+    year: Annotated[int, typer.Argument(help="Formula 1 season year (e.g. 2024)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+) -> None:
+    """Fetch the Formula 1 calendar via OpenF1 and export it as an ICS file."""
+    import asyncio
+
+    import httpx
+
+    from motorsport_calendar.exporters.ics import IcsExporter
+    from motorsport_calendar.providers.formula1.provider import Formula1Provider
+    from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
+
+    async def _fetch() -> list:
+        source = OpenF1Source()
+        provider = Formula1Provider(source)
+        return await provider.fetch_events("formula1", year)
+
+    console.print(f"Fetching F1 [bold cyan]{year}[/] calendar from OpenF1…")
+
+    try:
+        events = asyncio.run(_fetch())
+    except httpx.HTTPStatusError as exc:
+        err_console.print(
+            f"OpenF1 API error {exc.response.status_code}: {exc.request.url}"
+        )
+        raise typer.Exit(code=1)
+    except httpx.TimeoutException:
+        err_console.print("OpenF1 API timeout (10 s). Try again later.")
+        raise typer.Exit(code=1)
+
+    IcsExporter().export(events, output)
+
+    count = len(events)
+    sessions_count = sum(len(e.sessions) for e in events)
+    console.print(
+        f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
+        f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+    )
+
+
 @app.command()
 def export(
     provider: Annotated[str, typer.Option("--provider", "-p", help="Data provider name")],
