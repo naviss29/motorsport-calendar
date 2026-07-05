@@ -2,6 +2,51 @@
 
 ---
 
+## Session 2026-07-05 — Sprint 12 : CLI generate (agrégateur multi-provider)
+
+### Objectif
+Ajouter la commande `motocal generate YEAR OUTPUT.ics` qui itère tous les providers activés, fusionne les événements en un seul ICS, et résiste à l'échec partiel.
+
+### Travail effectué
+
+**`docs/PROJECT_RULES.md`**
+- Ajout règle 8 : résilience des commandes CLI agrégées — un provider qui échoue ne stoppe pas les autres.
+
+**`motorsport_calendar/cli.py`** — nouvelle commande `generate`
+- Lit `config.yaml` via `ConfigService`
+- `registry.discover()` + `source_registry.discover()` — découverte automatique
+- `registry.enabled(config.providers)` — liste des IDs activés (opt-out)
+- Pour chaque provider : `source_registry.get(cid, source_name)(cache, refresh)` + `registry.get(cid)(source)`
+- Fetch asynchrone groupé dans un seul `asyncio.run(_fetch_all())` — isolation d'erreur par provider
+- Exceptions capturées individuellement : `NotImplementedError`, `httpx.HTTPStatusError`, `httpx.TimeoutException`, `Exception`
+- Résumé `✓ provider : N événements` / `✗ provider : raison` affiché après fetch
+- Tri chronologique par `min(s.start_datetime for s in e.sessions)` — events sans sessions triés en dernier
+- Exit 0 si au moins un provider réussit, exit 1 si tous échouent
+- Fallback source : `source_registry.list_for(cid)[0]` si `ProviderConfig.source == ""`
+
+**`tests/test_cli_generate.py`** — 17 tests
+- Happy path (9) : F1 seul exit 0, F1 seul crée fichier, F1 seul 3 VEVENTs, les deux exit 0, les deux 6 VEVENTs, VCALENDAR, ✓ dans output, ✗ dans output, saison vide exit 0
+- Error path (5) : tous échouent exit 1, tous échouent pas de fichier, F1 HTTP 503 + WEC exit 0, F1 timeout + WEC exit 0, provider survivant exporté
+- Refresh (2) : flag exit 0, flag crée fichier
+- Tri (1) : WEC janvier avant F1 mars dans l'ICS
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `docs/PROJECT_RULES.md` | Modifié — règle 8 résilience |
+| `motorsport_calendar/cli.py` | Modifié — ajout commande generate |
+| `tests/test_cli_generate.py` | Créé — 17 tests |
+| `docs/TODO.md` | Mis à jour |
+| `docs/AI_CONTEXT.md` | Mis à jour |
+
+### Tests exécutés
+```
+306 passed — 0 failed — couverture 92 %
+```
+
+---
+
 ## Session 2026-07-05 — Sprint 11 : CLI generate-wec
 
 ### Objectif

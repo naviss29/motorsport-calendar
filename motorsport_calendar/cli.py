@@ -247,6 +247,128 @@ def generate_wec(
     )
 
 
+@app.command("generate")
+def generate(
+    year: Annotated[int, typer.Argument(help="Season year (e.g. 2024)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch all enabled championships and export them as a single ICS file."""
+    import asyncio
+    from datetime import datetime, timezone as _tz
+    from typing import Any
+
+    import httpx
+
+    from motorsport_calendar.cache import HttpCache
+    from motorsport_calendar.config import ConfigService
+    from motorsport_calendar.config.models import ProviderConfig
+    from motorsport_calendar.core.registry import registry
+    from motorsport_calendar.core.source_registry import source_registry
+    from motorsport_calendar.exporters.ics import IcsExporter
+
+    config = ConfigService()
+
+    cache: HttpCache | None = None
+    if config.cache.enabled:
+        cache = HttpCache(
+            cache_dir=config.cache.resolved_path,
+            ttl=config.cache.ttl_seconds,
+        )
+
+    registry.discover()
+    source_registry.discover()
+
+    enabled_ids = registry.enabled(config.providers)
+
+    if not enabled_ids:
+        err_console.print("Aucun provider activé dans la configuration.")
+        raise typer.Exit(code=1)
+
+    n = len(enabled_ids)
+    cache_note = " [yellow](--refresh)[/]" if refresh else ""
+    console.print(
+        f"Génération calendrier [bold cyan]{year}[/] — "
+        f"{n} provider{'s' if n != 1 else ''} activé{'s' if n != 1 else ''}…{cache_note}"
+    )
+
+    provider_list: list[tuple[str, Any]] = []
+    results: list[tuple[str, list, str | None]] = []
+
+    for championship_id in enabled_ids:
+        provider_cfg = config.providers.get(championship_id) or ProviderConfig()
+        source_name = provider_cfg.source
+        if not source_name:
+            available = source_registry.list_for(championship_id)
+            source_name = available[0] if available else ""
+
+        if not source_name:
+            results.append((championship_id, [], "aucune source disponible"))
+            continue
+
+        try:
+            make_source = source_registry.get(championship_id, source_name)
+            make_provider = registry.get(championship_id)
+        except KeyError as exc:
+            results.append((championship_id, [], str(exc)))
+            continue
+
+        source = make_source(cache, refresh)
+        provider_list.append((championship_id, make_provider(source)))
+
+    async def _fetch_all() -> list[tuple[str, list, str | None]]:
+        fetch_results: list[tuple[str, list, str | None]] = []
+        for cid, prov in provider_list:
+            try:
+                events = await prov.fetch_events(cid, year)
+                fetch_results.append((cid, list(events), None))
+            except NotImplementedError:
+                fetch_results.append((cid, [], "source non implémentée"))
+            except httpx.HTTPStatusError as exc:
+                fetch_results.append((cid, [], f"HTTP {exc.response.status_code}"))
+            except httpx.TimeoutException:
+                fetch_results.append((cid, [], "timeout"))
+            except Exception as exc:  # noqa: BLE001
+                fetch_results.append((cid, [], str(exc)))
+        return fetch_results
+
+    results.extend(asyncio.run(_fetch_all()))
+
+    all_events: list[Any] = []
+    for cid, events, error in results:
+        if error is None:
+            count = len(events)
+            console.print(
+                f"  [green]✓[/] {cid} : {count} événement{'s' if count != 1 else ''}"
+            )
+            all_events.extend(events)
+        else:
+            console.print(f"  [red]✗[/] {cid} : {error}")
+
+    if not any(error is None for _, _, error in results):
+        err_console.print("\nAucun championnat n'a pu être exporté.")
+        raise typer.Exit(code=1)
+
+    all_events.sort(
+        key=lambda e: min(
+            (s.start_datetime for s in e.sessions),
+            default=datetime.max.replace(tzinfo=_tz.utc),
+        )
+    )
+
+    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(all_events, output)
+
+    total_sessions = sum(len(e.sessions) for e in all_events)
+    console.print(
+        f"\nExport terminé : [bold]{output}[/] "
+        f"({len(all_events)} événement{'s' if len(all_events) != 1 else ''}, "
+        f"{total_sessions} session{'s' if total_sessions != 1 else ''})"
+    )
+
+
 @app.command()
 def export(
     provider: Annotated[str, typer.Option("--provider", "-p", help="Data provider name")],

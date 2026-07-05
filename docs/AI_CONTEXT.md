@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 11 — generate-wec terminé
-- **Tests** : 289 passants, 0 échouants — couverture 92 %
+- **Phase** : Sprint 12 — generate (agrégateur multi-provider) terminé
+- **Tests** : 306 passants, 0 échouants — couverture 92 %
 - **Branche** : `master`
 
 ---
@@ -99,6 +99,7 @@ motorsport_calendar/
 9. **IcsExporter** — ajout VALARM configurable via `alarm_minutes` (0 = désactivé)
 10. **ProviderRegistry** — `register/get/list_all/enabled/discover`, auto-enregistrement à l'import de `__init__.py`
 11. **SourceRegistry** — `register/get/list_for/list_all/discover`, clé `(championship, source_name)`, auto-enregistrement dans `sources/__init__.py`
+12. **CLI `generate`** — `motocal generate YEAR OUTPUT.ics [--refresh]` — agrège tous les providers activés en un seul ICS, résilience partielle (provider qui échoue → ✗ résumé, les autres continuent), tri chronologique
 
 ---
 
@@ -106,9 +107,9 @@ motorsport_calendar/
 
 **Prochaines tâches recommandées** :
 
-1. **CLI `generate YEAR OUTPUT.ics`** — itère `registry.enabled(config.providers)`, merge F1 + WEC en un seul ICS
-2. **Implémenter `ErgastSource`** — données historiques F1 (1950+), endpoint `ergast.com/api/f1/{year}/races.json`
-3. **Implémenter `OfficialWecSource`** — endpoint `fiawec.com` (investigation API/scraping nécessaire)
+1. **Implémenter `ErgastSource`** — données historiques F1 (1950+), endpoint `ergast.com/api/f1/{year}/races.json`
+2. **Implémenter `OfficialWecSource`** — endpoint `fiawec.com` (investigation API/scraping nécessaire)
+3. **CLI `generate-wec`** — fonctionnelle une fois `OfficialWecSource` implémentée
 
 Endpoint : `https://ergast.com/api/f1/{year}/races.json`
 Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py`

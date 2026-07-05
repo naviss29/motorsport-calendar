@@ -54,3 +54,13 @@
 - Format des commits : `type(scope): message` (Conventional Commits).
 - Branche principale : `master`.
 - Pas de merge sans tests verts.
+
+## 8. Résilience des commandes CLI agrégées
+
+Une commande CLI qui orchestre plusieurs providers ne doit **jamais** échouer
+à cause d'un provider individuel. Le comportement attendu est :
+
+1. Journaliser l'erreur (résumé affiché à l'utilisateur avec `✗ provider : raison`).
+2. Continuer avec les providers restants.
+3. Produire le meilleur résultat possible (exporter ce qui a réussi).
+4. Retourner exit code 0 si au moins un provider a réussi, 1 si tous ont échoué.

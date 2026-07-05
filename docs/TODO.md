@@ -15,9 +15,7 @@
   - Dépend de : OfficialWecSource implémentée (ou stub suffisant pour la CLI)
   - Estimation : 1h
 
-- [ ] 🔴 CLI `generate YEAR OUTPUT.ics` — merge F1 + WEC dans un seul ICS
-  - Dépend de : generate-f1 + generate-wec fonctionnels
-  - Estimation : 2h
+- [x] 🔴 CLI `generate YEAR OUTPUT.ics` — merge F1 + WEC dans un seul ICS — terminé Sprint 12
 
 ---
 
@@ -43,9 +41,7 @@
 
 - [x] 🔴 CLI `generate-wec YEAR OUTPUT.ics` — terminé, 16 tests (+ NotImplementedError géré gracieusement)
 
-- [ ] 🔴 CLI `generate YEAR OUTPUT.ics` — itère `registry.enabled(config.providers)`, merge tous les ICS
-  - Dépend de : generate-f1 + generate-wec ✅
-  - Estimation : 2h
+- [x] 🔴 CLI `generate YEAR OUTPUT.ics` — terminé Sprint 12, 17 tests, résilience partielle intégrée
 
 - [ ] 🔴 Commande `export` — implémentation réelle (actuellement stub exit 1)
   - Dépend de : ErgastSource ou OpenF1Source
