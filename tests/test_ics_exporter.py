@@ -1,0 +1,218 @@
+"""Tests for IcsExporter."""
+
+from pathlib import Path
+
+import pytest
+from icalendar import Calendar
+
+from motorsport_calendar.exporters.ics import IcsExporter
+from motorsport_calendar.models import (
+    Championship,
+    ChampionshipCategory,
+    Circuit,
+    Event,
+    Session,
+    SessionType,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _parse(data: bytes) -> Calendar:
+    return Calendar.from_ical(data)
+
+
+def _vevents(cal: Calendar) -> list:
+    return [c for c in cal.walk() if c.name == "VEVENT"]
+
+
+# ---------------------------------------------------------------------------
+# File generation
+# ---------------------------------------------------------------------------
+
+
+class TestExportFile:
+    def test_creates_file(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        assert output.exists()
+        assert output.stat().st_size > 0
+
+    def test_file_starts_with_vcalendar(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        assert output.read_bytes().startswith(b"BEGIN:VCALENDAR")
+
+    def test_export_to_string_is_valid_ics(self, australian_gp: Event) -> None:
+        result = IcsExporter().export_to_string([australian_gp])
+        assert "BEGIN:VCALENDAR" in result
+        assert "BEGIN:VEVENT" in result
+        assert "END:VEVENT" in result
+        assert "END:VCALENDAR" in result
+
+
+# ---------------------------------------------------------------------------
+# VEVENT count
+# ---------------------------------------------------------------------------
+
+
+class TestVEventCount:
+    def test_two_sessions_produce_two_vevents(self, tmp_path: Path, australian_gp: Event) -> None:
+        # australian_gp has qualifying + race = 2 sessions
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        assert len(_vevents(cal)) == 2
+
+    def test_empty_event_list_produces_no_vevents(self, tmp_path: Path) -> None:
+        output = tmp_path / "empty.ics"
+        IcsExporter().export([], output)
+        cal = _parse(output.read_bytes())
+        assert _vevents(cal) == []
+
+    def test_event_without_sessions_produces_no_vevents(
+        self, tmp_path: Path, f1: Championship, albert_park: Circuit
+    ) -> None:
+        event = Event(
+            championship=f1,
+            season=2025,
+            round=99,
+            name="No Sessions GP",
+            circuit=albert_park,
+            event_uid="f1-2025-99-test@motorsport-calendar",
+        )
+        output = tmp_path / "no_sessions.ics"
+        IcsExporter().export([event], output)
+        cal = _parse(output.read_bytes())
+        assert _vevents(cal) == []
+
+    def test_multiple_events_accumulate_vevents(
+        self,
+        tmp_path: Path,
+        australian_gp: Event,
+        f1: Championship,
+        albert_park: Circuit,
+        race_session: Session,
+    ) -> None:
+        second_event = Event(
+            championship=f1,
+            season=2025,
+            round=2,
+            name="Bahrain Grand Prix",
+            circuit=albert_park,
+            event_uid="f1-2025-02-bhr@motorsport-calendar",
+            sessions=(race_session,),
+        )
+        output = tmp_path / "multi.ics"
+        IcsExporter().export([australian_gp, second_event], output)
+        cal = _parse(output.read_bytes())
+        # 2 sessions (aus) + 1 session (bhr) = 3
+        assert len(_vevents(cal)) == 3
+
+
+# ---------------------------------------------------------------------------
+# UID uniqueness and format
+# ---------------------------------------------------------------------------
+
+
+class TestUid:
+    def test_uids_are_unique(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        uids = [str(c.get("uid")) for c in _vevents(cal)]
+        assert len(uids) == len(set(uids))
+
+    def test_uid_format_is_event_uid_dash_session_type(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        uids = {str(c.get("uid")) for c in _vevents(cal)}
+        assert f"{australian_gp.event_uid}-{SessionType.QUALIFYING}" in uids
+        assert f"{australian_gp.event_uid}-{SessionType.RACE}" in uids
+
+
+# ---------------------------------------------------------------------------
+# Timezone preservation
+# ---------------------------------------------------------------------------
+
+
+class TestTimezone:
+    def test_dtstart_is_timezone_aware(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        for vevent in _vevents(cal):
+            dtstart = vevent.get("dtstart").dt
+            assert dtstart.tzinfo is not None, "DTSTART must be timezone-aware"
+
+    def test_dtend_is_timezone_aware(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        for vevent in _vevents(cal):
+            dtend = vevent.get("dtend").dt
+            assert dtend.tzinfo is not None, "DTEND must be timezone-aware"
+
+
+# ---------------------------------------------------------------------------
+# Field values
+# ---------------------------------------------------------------------------
+
+
+class TestFieldValues:
+    def test_summary_matches_session_title(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        summaries = {str(c.get("summary")) for c in _vevents(cal)}
+        assert "Australian Grand Prix — Race" in summaries
+        assert "Australian Grand Prix — Qualifying" in summaries
+
+    def test_description_included_when_present(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        # race_session has description; qualifying_session does not
+        descriptions = [str(c.get("description")) for c in _vevents(cal) if c.get("description")]
+        assert any("Round 1 of the 2025 season." in d for d in descriptions)
+
+    def test_description_absent_when_none(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        # qualifying_session has no description → its VEVENT has no DESCRIPTION property
+        qualifying = next(
+            c for c in _vevents(cal) if "Qualifying" in str(c.get("summary"))
+        )
+        assert qualifying.get("description") is None
+
+    def test_location_is_circuit_name_and_country(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        expected = f"{australian_gp.circuit.name}, {australian_gp.circuit.country}"
+        for vevent in _vevents(cal):
+            assert str(vevent.get("location")) == expected
+
+    def test_status_is_confirmed(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        for vevent in _vevents(cal):
+            assert str(vevent.get("status")).upper() == "CONFIRMED"
+
+    def test_prodid_contains_motorsport_calendar(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        output = tmp_path / "calendar.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        prodid = str(cal.get("prodid"))
+        assert "Motorsport Calendar" in prodid

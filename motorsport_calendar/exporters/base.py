@@ -1,13 +1,14 @@
 """Abstract base class for calendar exporters."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from pathlib import Path
 
-from motorsport_calendar.models import Championship
+from motorsport_calendar.models import Event
 
 
 class Exporter(ABC):
-    """Converts a Championship to a specific calendar file format.
+    """Serialises a collection of events to a specific calendar file format.
 
     Implement this class to add a new output format (e.g. ICS, JSON, CSV).
     """
@@ -25,29 +26,26 @@ class Exporter(ABC):
         ...
 
     @abstractmethod
-    def export(self, championship: Championship, output: Path) -> None:
-        """Export a championship calendar to a file.
+    def export(self, events: Iterable[Event], output_path: Path) -> None:
+        """Write the events to a file.
 
         Args:
-            championship: The championship to export.
-            output: Destination file path.
+            events: Events to export (each Event contains its Sessions).
+            output_path: Destination file path.
 
         Raises:
-            NotImplementedError: Must be implemented by subclasses.
             OSError: On file write failures.
         """
         ...
 
     @abstractmethod
-    def export_to_string(self, championship: Championship) -> str:
-        """Export a championship calendar to a string.
-
-        Useful for testing or streaming without writing to disk.
+    def export_to_string(self, events: Iterable[Event]) -> str:
+        """Serialise the events to a string (useful for testing/streaming).
 
         Args:
-            championship: The championship to export.
+            events: Events to export.
 
         Returns:
-            The serialized calendar as a string.
+            The serialised calendar as a string.
         """
         ...
