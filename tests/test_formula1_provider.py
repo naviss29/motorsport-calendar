@@ -111,7 +111,7 @@ class TestFetchChampionship:
 
 
 # ---------------------------------------------------------------------------
-# Source stubs — each raises NotImplementedError (not yet implemented)
+# Source stubs — still pending implementation
 # ---------------------------------------------------------------------------
 
 
@@ -120,13 +120,15 @@ class TestSourceStubs:
         with pytest.raises(NotImplementedError):
             await OfficialFormula1Source().get_season(2025)
 
-    async def test_openf1_source_raises_not_implemented(self) -> None:
-        with pytest.raises(NotImplementedError):
-            await OpenF1Source().get_season(2025)
-
     async def test_ergast_source_raises_not_implemented(self) -> None:
         with pytest.raises(NotImplementedError):
             await ErgastSource().get_season(2025)
+
+    def test_openf1_source_is_implemented(self) -> None:
+        # OpenF1Source no longer raises NotImplementedError — it is a real implementation.
+        # Its behaviour is covered in test_openf1_source.py.
+        source = OpenF1Source()
+        assert isinstance(source, OpenF1Source)
 
     async def test_cached_source_raises_not_implemented(self) -> None:
         with pytest.raises(NotImplementedError):
