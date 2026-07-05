@@ -2,6 +2,55 @@
 
 ---
 
+## Session 2026-07-05 — Sprint 7 : Provider WEC
+
+### Objectif
+Créer l'architecture du provider WEC, symétrique à F1. Pas d'implémentation HTTP pour l'instant.
+
+### Travail effectué
+
+**Architecture `providers/wec/`**
+- `WecSource` (ABC) — contrat identique à `Formula1Source`
+- `WecProvider` — délègue à `WecSource`, retourne `Championship(category=ENDURANCE)`
+- `OfficialWecSource` — stub `raise NotImplementedError`
+
+**SessionTypes WEC**
+- `FREE_PRACTICE`, `QUALIFYING`, `HYPERPOLE`, `RACE` — déjà présents dans le modèle `SessionType`
+- Vérification explicite dans les tests
+
+**Tests** (`test_wec_provider.py`)
+- WecSource ABC non instanciable
+- WecProvider identity (name="wec", supported_championships=["wec"])
+- fetch_events : délégation, empty, passage year, non-mutation
+- fetch_championship : id, name, category ENDURANCE, years différents
+- SessionType WEC : les 4 types supportés
+- OfficialWecSource : NotImplementedError, isinstance WecSource
+- Interopérabilité modèles : Event, Circuit, Championship identiques F1/WEC
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `motorsport_calendar/providers/wec/__init__.py` | Créé |
+| `motorsport_calendar/providers/wec/provider.py` | Créé |
+| `motorsport_calendar/providers/wec/source.py` | Créé |
+| `motorsport_calendar/providers/wec/sources/__init__.py` | Créé |
+| `motorsport_calendar/providers/wec/sources/official.py` | Créé |
+| `tests/test_wec_provider.py` | Créé — 24 tests |
+| `docs/AI_CONTEXT.md` | Mis à jour |
+| `docs/JOURNAL.md` | Mis à jour |
+| `docs/TODO.md` | Mis à jour |
+
+### Bugs rencontrés
+Aucun.
+
+### Tests exécutés
+```
+182 passed — 0 failed — couverture 90 %
+```
+
+---
+
 ## Session 2026-07-05 — Sprint 6 : Cache HTTP centralisé
 
 ### Objectif

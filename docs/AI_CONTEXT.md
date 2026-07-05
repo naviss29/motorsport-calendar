@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 6 — Cache HTTP centralisé terminé
-- **Tests** : 158 passants, 0 échouants — couverture 89 %
+- **Phase** : Sprint 7 — Provider WEC terminé
+- **Tests** : 182 passants, 0 échouants — couverture 90 %
 - **Branche** : `master`
 
 ---
@@ -57,6 +57,14 @@ motorsport_calendar/
 │           ├── official.py  # 🔴 STUB — raise NotImplementedError
 │           └── cached.py    # 🔴 STUB — raise NotImplementedError
 │
+├── providers/wec/
+│   ├── __init__.py          # export WecProvider, WecSource
+│   ├── provider.py          # ✅ WecProvider — délègue à WecSource
+│   ├── source.py            # ✅ WecSource (ABC) — get_season(year)
+│   └── sources/
+│       ├── __init__.py
+│       └── official.py      # 🔴 STUB — raise NotImplementedError
+│
 ├── exporters/
 │   ├── base.py              # Exporter (ABC) — export / export_to_string
 │   └── ics.py               # ✅ IMPLÉMENTÉ — RFC 5545, 1 VEVENT par Session
@@ -76,12 +84,17 @@ motorsport_calendar/
 4. **OpenF1Source** — appels HTTP réels via `httpx`, mapping complet, 25 circuits IANA, gestion sessions incomplètes
 5. **CLI `generate-f1`** — `motocal generate-f1 YEAR OUTPUT.ics [--refresh]`, gestion erreurs HTTP
 6. **HttpCache** — cache disque JSON centralisé, TTL configurable, indépendant de httpx, `--refresh` pour bypass
+7. **WecProvider** — architecture identique à F1 (`WecSource` ABC + `OfficialWecSource` stub), `ChampionshipCategory.ENDURANCE`
 
 ---
 
 ## Fonctionnalités en cours / prochaines
 
-**Prochaine tâche recommandée** : implémenter `ErgastSource` pour les données historiques F1 (1950+). Le cache est déjà en place et sera utilisé automatiquement.
+**Prochaines tâches recommandées** :
+
+1. **Implémenter `OfficialWecSource`** — récupérer les données WEC (endpoint officiel ou scraping fiawec.com)
+2. **CLI `generate-wec YEAR OUTPUT.ics`** — identique à `generate-f1`, utilise `WecProvider(OfficialWecSource())`
+3. **CLI `generate YEAR OUTPUT.ics`** — merge F1 + WEC dans un seul calendrier ICS
 
 Endpoint : `https://ergast.com/api/f1/{year}/races.json`
 Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py`
@@ -99,6 +112,8 @@ Tests cibles : `tests/test_ergast_source.py`
 - **Sessions invalides** : `_build_session()` retourne `None` si date manquante, naive, ou end ≤ start.
 - **Cache** : `HttpCache(cache_dir, ttl)` — fichiers `{sha256}.json` dans `.cache/`. Quand `OpenF1Source(client=mock)` est utilisé en test, le cache est désactivé automatiquement (client injecté = mode test).
 - **`--refresh`** : passe `refresh=True` à `OpenF1Source`, propagé à `HttpCache.get_json(refresh=True)`.
+- **WEC SessionTypes supportés** : `FREE_PRACTICE`, `QUALIFYING`, `HYPERPOLE`, `RACE` — tous déjà dans `SessionType` (StrEnum).
+- **WEC Championship** : `id=f"wec-{year}"`, `name="FIA World Endurance Championship"`, `category=ChampionshipCategory.ENDURANCE`.
 
 ---
 

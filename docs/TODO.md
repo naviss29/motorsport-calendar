@@ -5,6 +5,22 @@
 
 ---
 
+## Providers WEC
+
+- [ ] 🔴 `OfficialWecSource` — implémenter `get_season()` via fiawec.com (API ou scraping)
+  - Dépend de : investigation endpoint
+  - Estimation : 4-6h (mapping + tests)
+
+- [ ] 🔴 CLI `generate-wec YEAR OUTPUT.ics` — identique à `generate-f1`
+  - Dépend de : OfficialWecSource implémentée (ou stub suffisant pour la CLI)
+  - Estimation : 1h
+
+- [ ] 🔴 CLI `generate YEAR OUTPUT.ics` — merge F1 + WEC dans un seul ICS
+  - Dépend de : generate-f1 + generate-wec fonctionnels
+  - Estimation : 2h
+
+---
+
 ## Providers F1
 
 - [ ] 🔴 `ErgastSource` — implémenter `get_season()` via API Ergast (données historiques 1950+)
@@ -89,3 +105,4 @@
 - [x] HttpCache — cache disque JSON centralisé, TTL, refresh, 24 tests
 - [x] Migration OpenF1Source → HttpCache
 - [x] CLI `--refresh` flag
+- [x] WecProvider — architecture complète (provider + source ABC + OfficialWecSource stub), 24 tests
