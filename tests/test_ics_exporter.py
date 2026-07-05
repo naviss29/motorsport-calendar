@@ -216,3 +216,63 @@ class TestFieldValues:
         cal = _parse(output.read_bytes())
         prodid = str(cal.get("prodid"))
         assert "Motorsport Calendar" in prodid
+
+
+# ---------------------------------------------------------------------------
+# VALARM — rappel configurable
+# ---------------------------------------------------------------------------
+
+
+def _valarms(cal: Calendar) -> list:
+    return [c for c in cal.walk() if c.name == "VALARM"]
+
+
+class TestValarm:
+    def test_no_alarm_by_default(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "no_alarm.ics"
+        IcsExporter().export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        assert _valarms(cal) == []
+
+    def test_no_alarm_when_alarm_minutes_is_zero(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        output = tmp_path / "alarm0.ics"
+        IcsExporter(alarm_minutes=0).export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        assert _valarms(cal) == []
+
+    def test_alarm_present_when_alarm_minutes_gt_zero(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        output = tmp_path / "alarm30.ics"
+        IcsExporter(alarm_minutes=30).export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        assert len(_valarms(cal)) > 0
+
+    def test_one_alarm_per_session(self, tmp_path: Path, australian_gp: Event) -> None:
+        # australian_gp has 2 sessions → 2 VALARMs
+        output = tmp_path / "alarm.ics"
+        IcsExporter(alarm_minutes=15).export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        assert len(_valarms(cal)) == len(australian_gp.sessions)
+
+    def test_alarm_trigger_is_negative_offset(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        output = tmp_path / "alarm.ics"
+        IcsExporter(alarm_minutes=30).export([australian_gp], output)
+        content = output.read_text(encoding="utf-8")
+        assert "TRIGGER:-PT30M" in content
+
+    def test_alarm_action_is_display(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = tmp_path / "alarm.ics"
+        IcsExporter(alarm_minutes=30).export([australian_gp], output)
+        cal = _parse(output.read_bytes())
+        for alarm in _valarms(cal):
+            assert str(alarm.get("action")).upper() == "DISPLAY"
+
+    def test_export_to_string_contains_valarm(self, australian_gp: Event) -> None:
+        content = IcsExporter(alarm_minutes=30).export_to_string([australian_gp])
+        assert "BEGIN:VALARM" in content
+        assert "END:VALARM" in content

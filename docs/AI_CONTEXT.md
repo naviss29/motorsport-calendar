@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 7 — Provider WEC terminé
-- **Tests** : 182 passants, 0 échouants — couverture 90 %
+- **Phase** : Sprint 8 — Configuration centralisée terminée
+- **Tests** : 219 passants, 0 échouants — couverture 91 %
 - **Branche** : `master`
 
 ---
@@ -57,6 +57,11 @@ motorsport_calendar/
 │           ├── official.py  # 🔴 STUB — raise NotImplementedError
 │           └── cached.py    # 🔴 STUB — raise NotImplementedError
 │
+├── config/
+│   ├── __init__.py          # export ConfigService + tous les modèles
+│   ├── models.py            # ✅ AppConfig, CacheConfig, IcsConfig, ProvidersConfig, ProviderConfig
+│   └── service.py           # ✅ ConfigService — lit config.yaml, merge avec défauts Pydantic
+│
 ├── providers/wec/
 │   ├── __init__.py          # export WecProvider, WecSource
 │   ├── provider.py          # ✅ WecProvider — délègue à WecSource
@@ -85,6 +90,8 @@ motorsport_calendar/
 5. **CLI `generate-f1`** — `motocal generate-f1 YEAR OUTPUT.ics [--refresh]`, gestion erreurs HTTP
 6. **HttpCache** — cache disque JSON centralisé, TTL configurable, indépendant de httpx, `--refresh` pour bypass
 7. **WecProvider** — architecture identique à F1 (`WecSource` ABC + `OfficialWecSource` stub), `ChampionshipCategory.ENDURANCE`
+8. **ConfigService** — lit `config.yaml` (CWD puis `~/.config/…`), valeurs par défaut Pydantic, validation automatique
+9. **IcsExporter** — ajout VALARM configurable via `alarm_minutes` (0 = désactivé)
 
 ---
 
@@ -114,6 +121,10 @@ Tests cibles : `tests/test_ergast_source.py`
 - **`--refresh`** : passe `refresh=True` à `OpenF1Source`, propagé à `HttpCache.get_json(refresh=True)`.
 - **WEC SessionTypes supportés** : `FREE_PRACTICE`, `QUALIFYING`, `HYPERPOLE`, `RACE` — tous déjà dans `SessionType` (StrEnum).
 - **WEC Championship** : `id=f"wec-{year}"`, `name="FIA World Endurance Championship"`, `category=ChampionshipCategory.ENDURANCE`.
+- **Config** : `ConfigService(config_path=None)` — cherche `config.yaml` dans CWD puis `~/.config/motorsport-calendar/`. Aucun fichier → défauts complets.
+- **config.yaml** : ignoré par git (personnel). `config.example.yaml` commité comme référence.
+- **VALARM** : `IcsExporter(alarm_minutes=N)` — N>0 → `TRIGGER:-PTNm` dans chaque VEVENT. CLI lit `config.ics.alarm_minutes`.
+- **Source selection** : CLI lit `config.providers.formula1.source` — source inconnue → exit 1 avec message clair.
 
 ---
 

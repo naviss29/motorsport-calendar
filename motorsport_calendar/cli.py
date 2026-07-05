@@ -75,16 +75,38 @@ def generate_f1(
 
     import httpx
 
+    from motorsport_calendar.cache import HttpCache
+    from motorsport_calendar.config import ConfigService
     from motorsport_calendar.exporters.ics import IcsExporter
     from motorsport_calendar.providers.formula1.provider import Formula1Provider
     from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
 
+    config = ConfigService()
+
+    # Construction du cache depuis la configuration
+    cache: HttpCache | None = None
+    if config.cache.enabled:
+        cache = HttpCache(
+            cache_dir=config.cache.resolved_path,
+            ttl=config.cache.ttl_seconds,
+        )
+
+    # Sélection de la source F1 depuis la configuration
+    source_name = config.providers.formula1.source
+    if source_name == "openf1":
+        source = OpenF1Source(cache=cache, refresh=refresh)
+    else:
+        err_console.print(
+            f"Source F1 inconnue : '[bold]{source_name}[/]'. "
+            "Vérifier la clé [cyan]providers.formula1.source[/] dans config.yaml."
+        )
+        raise typer.Exit(code=1)
+
     async def _fetch() -> list:
-        source = OpenF1Source(refresh=refresh)
         provider = Formula1Provider(source)
         return await provider.fetch_events("formula1", year)
 
-    cache_note = " [yellow](--refresh : cache ignoré)[/]" if refresh else ""
+    cache_note = " [yellow](--refresh)[/]" if refresh else ""
     console.print(f"Fetching F1 [bold cyan]{year}[/] calendar from OpenF1…{cache_note}")
 
     try:
@@ -98,7 +120,7 @@ def generate_f1(
         err_console.print("OpenF1 API timeout (10 s). Try again later.")
         raise typer.Exit(code=1)
 
-    IcsExporter().export(events, output)
+    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
 
     count = len(events)
     sessions_count = sum(len(e.sessions) for e in events)

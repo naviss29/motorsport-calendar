@@ -46,6 +46,9 @@ dmypy.json
 # Cache HTTP local
 .cache/
 
+# Configuration locale (personnelle, ne pas committer)
+config.yaml
+
 # Secrets
 .env
 .env.*

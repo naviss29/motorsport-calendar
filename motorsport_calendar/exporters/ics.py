@@ -1,8 +1,10 @@
 """ICS exporter — converts motorsport events to iCalendar (.ics) format."""
 
 from collections.abc import Iterable
+from datetime import timedelta
 from pathlib import Path
 
+from icalendar import Alarm
 from icalendar import Calendar
 from icalendar import Event as ICalEvent
 
@@ -17,7 +19,14 @@ class IcsExporter(Exporter):
 
     Compatible with Google Calendar, Apple Calendar, and Outlook.
     One VEVENT is generated per Session inside each Event.
+
+    Args:
+        alarm_minutes: Minutes before session start to trigger a VALARM reminder.
+                       0 disables the alarm entirely (default).
     """
+
+    def __init__(self, alarm_minutes: int = 0) -> None:
+        self._alarm_minutes = alarm_minutes
 
     @property
     def name(self) -> str:
@@ -56,6 +65,14 @@ class IcsExporter(Exporter):
                 vevent.add("dtend", session.end_datetime)
                 vevent.add("location", f"{event.circuit.name}, {event.circuit.country}")
                 vevent.add("status", "CONFIRMED")
+
+                if self._alarm_minutes > 0:
+                    alarm = Alarm()
+                    alarm.add("action", "DISPLAY")
+                    alarm.add("description", "Reminder")
+                    alarm.add("trigger", timedelta(minutes=-self._alarm_minutes))
+                    vevent.add_component(alarm)
+
                 cal.add_component(vevent)
 
         return cal

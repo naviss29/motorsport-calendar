@@ -128,3 +128,39 @@ Option `--refresh` en CLI propage `refresh=True` jusqu'au cache.
 - Les tests existants (`OpenF1Source(client=mock)`) ne nécessitent aucune modification.
 - Le cache est dans `.cache/` (CWD) — simple mais pas idéal pour un outil installé globalement (dette technique documentée).
 - `invalidate()` et `clear()` disponibles pour les cas avancés.
+
+---
+
+## ADR-009 — `ConfigService` + Pydantic pour la configuration centrale
+
+**Contexte**
+Plusieurs valeurs étaient codées en dur : chemin du cache (`.cache/`), TTL (86400s), alarm ICS, source F1. Avec l'ajout de WEC et des futures disciplines, la configuration doit être externalisée.
+
+**Décision**
+Créer `motorsport_calendar/config/` avec :
+- Modèles Pydantic v2 `frozen=True` pour chaque section (`CacheConfig`, `IcsConfig`, `ProviderConfig`, `ProvidersConfig`, `AppConfig`)
+- `ConfigService` qui lit `config.yaml` (CWD → `~/.config/…` → défauts)
+- `config.yaml` dans `.gitignore`, `config.example.yaml` commité comme référence
+- Dépendance : `pyyaml>=6.0`
+
+**Conséquences**
+- Plus aucun chemin ou TTL codé en dur dans les providers ou la CLI
+- La sélection de source F1/WEC est pilotée par `providers.formula1.source` dans le YAML
+- Pydantic valide la configuration au démarrage — erreur claire si malformée
+- Le VALARM ICS est configurable via `ics.alarm_minutes` (0 = désactivé)
+- Les tests passent un `config_path` explicite pour l'isolation
+
+---
+
+## ADR-010 — VALARM dans IcsExporter via `alarm_minutes`
+
+**Contexte**
+Les utilisateurs souhaitent des rappels calendrier avant chaque session motorsport.
+
+**Décision**
+`IcsExporter(alarm_minutes=N)` — si N>0, chaque VEVENT contient un composant VALARM `ACTION:DISPLAY` avec `TRIGGER:-PTNm`. Valeur lue depuis `config.ics.alarm_minutes`.
+
+**Conséquences**
+- Compatible RFC 5545 — fonctionne dans Google Calendar, Apple Calendar, Outlook
+- Rétrocompatible : `IcsExporter()` sans argument = `alarm_minutes=0` = aucun VALARM
+- Les tests existants (`IcsExporter()`) ne nécessitent aucune modification

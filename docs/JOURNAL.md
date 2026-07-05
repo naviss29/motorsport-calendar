@@ -2,6 +2,58 @@
 
 ---
 
+## Session 2026-07-05 — Sprint 8 : Configuration centralisée
+
+### Objectif
+Supprimer tous les paramètres codés en dur. Créer un `ConfigService` qui lit `config.yaml` et alimente le cache, les providers et l'exporteur ICS.
+
+### Travail effectué
+
+**Module `motorsport_calendar/config/`**
+- `AppConfig`, `CacheConfig`, `IcsConfig`, `ProviderConfig`, `ProvidersConfig` — tous Pydantic v2 `frozen=True`
+- `ConfigService` : cherche `config.yaml` (CWD → `~/.config/…`) puis utilise les défauts
+- Dépendance `pyyaml>=6.0` ajoutée à `pyproject.toml`
+
+**IcsExporter**
+- Ajout de `alarm_minutes: int = 0` au constructeur
+- Si `alarm_minutes > 0` : VALARM `ACTION:DISPLAY`, `TRIGGER:-PTNm` dans chaque VEVENT
+
+**CLI `generate-f1`**
+- Lecture `ConfigService()` au démarrage de la commande
+- Cache construit depuis `config.cache` (path + TTL)
+- Source F1 sélectionnée depuis `config.providers.formula1.source`
+- `IcsExporter(alarm_minutes=config.ics.alarm_minutes)` — plus de valeur codée en dur
+
+**Fichiers**
+- `config.example.yaml` — référence commentée de toutes les options
+- `config.yaml` ajouté à `.gitignore`
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `motorsport_calendar/config/__init__.py` | Créé |
+| `motorsport_calendar/config/models.py` | Créé — 5 modèles Pydantic |
+| `motorsport_calendar/config/service.py` | Créé — ConfigService |
+| `motorsport_calendar/exporters/ics.py` | Modifié — alarm_minutes + VALARM |
+| `motorsport_calendar/cli.py` | Modifié — wiring ConfigService |
+| `pyproject.toml` | Modifié — pyyaml>=6.0 |
+| `tests/test_config_service.py` | Créé — 30 tests |
+| `tests/test_ics_exporter.py` | Modifié — 7 tests VALARM |
+| `config.example.yaml` | Créé — documentation utilisateur |
+| `.gitignore` | Modifié — config.yaml exclu |
+| `docs/DECISIONS.md` | ADR-009 + ADR-010 |
+
+### Bugs rencontrés
+Aucun.
+
+### Tests exécutés
+```
+219 passed — 0 failed — couverture 91 %
+```
+
+---
+
 ## Session 2026-07-05 — Sprint 7 : Provider WEC
 
 ### Objectif

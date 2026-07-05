@@ -106,3 +106,6 @@
 - [x] Migration OpenF1Source → HttpCache
 - [x] CLI `--refresh` flag
 - [x] WecProvider — architecture complète (provider + source ABC + OfficialWecSource stub), 24 tests
+- [x] ConfigService — config.yaml, Pydantic, valeurs par défaut, 30 tests
+- [x] IcsExporter — VALARM configurable (alarm_minutes), 7 tests
+- [x] CLI generate-f1 — wiring ConfigService (cache path/TTL, source selection, alarm)

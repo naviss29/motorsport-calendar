@@ -1,0 +1,26 @@
+# motorsport-calendar — exemple de configuration
+# Copier ce fichier en config.yaml et adapter les valeurs.
+# Toutes les clés sont optionnelles : les valeurs par défaut s'appliquent si absentes.
+
+# Fuseau horaire par défaut pour l'affichage (IANA, ex: Europe/Paris, UTC, America/New_York)
+timezone: Europe/Paris
+
+cache:
+  # Activer / désactiver le cache disque
+  enabled: true
+  # Répertoire de stockage des fichiers cache
+  path: ~/.cache/motorsport-calendar
+  # Durée de vie en heures (défaut : 24)
+  ttl_hours: 24
+
+ics:
+  # Minutes avant chaque session pour le rappel VALARM (0 = désactivé)
+  alarm_minutes: 30
+
+providers:
+  formula1:
+    # Source de données F1 : openf1 (API openf1.org, saisons 2023+)
+    source: openf1
+  wec:
+    # Source de données WEC : official (site FIA WEC — non implémentée)
+    source: official
