@@ -10,6 +10,7 @@ from motorsport_calendar.models import (
     ChampionshipCategory,
     Circuit,
     Event,
+    EventStatus,
     Session,
     SessionType,
 )
@@ -119,7 +120,7 @@ class TestSession:
             Session(
                 type=SessionType.QUALIFYING,
                 start_datetime=datetime(2025, 3, 16, 8, 0, tzinfo=TZ),
-                end_datetime=datetime(2025, 3, 16, 7, 0, tzinfo=TZ),  # before start
+                end_datetime=datetime(2025, 3, 16, 7, 0, tzinfo=TZ),
                 title="Qualifying",
             )
 
@@ -128,7 +129,7 @@ class TestSession:
             Session(
                 type=SessionType.FP1,
                 start_datetime=datetime(2025, 3, 14, 10, 0, tzinfo=TZ),
-                end_datetime=datetime(2025, 3, 14, 10, 0, tzinfo=TZ),  # equal
+                end_datetime=datetime(2025, 3, 14, 10, 0, tzinfo=TZ),
                 title="FP1",
             )
 
@@ -147,6 +148,21 @@ class TestSession:
 
 
 # ---------------------------------------------------------------------------
+# EventStatus
+# ---------------------------------------------------------------------------
+
+
+class TestEventStatus:
+    def test_all_values_defined(self) -> None:
+        values = {s.value for s in EventStatus}
+        assert values == {"scheduled", "postponed", "cancelled", "finished"}
+
+    def test_is_str(self) -> None:
+        assert isinstance(EventStatus.SCHEDULED, str)
+        assert EventStatus.SCHEDULED == "scheduled"
+
+
+# ---------------------------------------------------------------------------
 # Event
 # ---------------------------------------------------------------------------
 
@@ -157,6 +173,56 @@ class TestEvent:
         assert australian_gp.season == 2025
         assert australian_gp.round == 1
         assert len(australian_gp.sessions) == 2
+        assert australian_gp.event_uid == "f1-2025-01-aus@motorsport-calendar"
+
+    def test_status_defaults_to_scheduled(self, australian_gp: Event) -> None:
+        assert australian_gp.status == EventStatus.SCHEDULED
+
+    def test_status_accepts_all_values(self, f1: Championship, albert_park: Circuit) -> None:
+        for status in EventStatus:
+            event = Event(
+                championship=f1,
+                season=2025,
+                round=1,
+                name="X",
+                circuit=albert_park,
+                event_uid="uid@test",
+                status=status,
+            )
+            assert event.status == status
+
+    def test_status_rejects_invalid_value(self, f1: Championship, albert_park: Circuit) -> None:
+        with pytest.raises(ValidationError):
+            Event(
+                championship=f1,
+                season=2025,
+                round=1,
+                name="X",
+                circuit=albert_park,
+                event_uid="uid@test",
+                status="unknown",  # type: ignore[arg-type]
+            )
+
+    def test_event_uid_required(self, f1: Championship, albert_park: Circuit) -> None:
+        with pytest.raises(ValidationError):
+            Event(  # type: ignore[call-arg]
+                championship=f1,
+                season=2025,
+                round=1,
+                name="X",
+                circuit=albert_park,
+            )
+
+    def test_event_uid_cannot_be_empty(self, f1: Championship, albert_park: Circuit) -> None:
+        with pytest.raises(ValidationError):
+            Event(
+                championship=f1,
+                season=2025,
+                round=1,
+                name="X",
+                circuit=albert_park,
+                event_uid="",
+            )
 
     def test_sessions_are_tuple(self, australian_gp: Event) -> None:
         assert isinstance(australian_gp.sessions, tuple)
@@ -176,16 +242,31 @@ class TestEvent:
             round=2,
             name="Bahrain Grand Prix",
             circuit=albert_park,
+            event_uid="f1-2025-02-bhr@motorsport-calendar",
         )
         assert event.sessions == ()
 
     def test_season_bounds(self, f1: Championship, albert_park: Circuit) -> None:
         with pytest.raises(ValidationError):
-            Event(championship=f1, season=1900, round=1, name="X", circuit=albert_park)
+            Event(
+                championship=f1,
+                season=1900,
+                round=1,
+                name="X",
+                circuit=albert_park,
+                event_uid="uid@test",
+            )
 
     def test_round_must_be_positive(self, f1: Championship, albert_park: Circuit) -> None:
         with pytest.raises(ValidationError):
-            Event(championship=f1, season=2025, round=0, name="X", circuit=albert_park)
+            Event(
+                championship=f1,
+                season=2025,
+                round=0,
+                name="X",
+                circuit=albert_park,
+                event_uid="uid@test",
+            )
 
     def test_immutable(self, australian_gp: Event) -> None:
         with pytest.raises(ValidationError):

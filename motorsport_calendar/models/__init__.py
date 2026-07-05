@@ -2,7 +2,7 @@
 
 from .championship import Championship, ChampionshipCategory
 from .circuit import Circuit
-from .event import Event
+from .event import Event, EventStatus
 from .session import Session, SessionType
 
 __all__ = [
@@ -10,6 +10,7 @@ __all__ = [
     "ChampionshipCategory",
     "Circuit",
     "Event",
+    "EventStatus",
     "Session",
     "SessionType",
 ]

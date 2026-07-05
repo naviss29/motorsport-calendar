@@ -71,4 +71,5 @@ def australian_gp(
         name="Australian Grand Prix",
         circuit=albert_park,
         sessions=(qualifying_session, race_session),
+        event_uid="f1-2025-01-aus@motorsport-calendar",
     )
