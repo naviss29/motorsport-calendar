@@ -177,3 +177,60 @@ class TestGenerateF1Errors:
         with patch.object(OpenF1Source, "_get_json", mock):
             runner.invoke(app, ["generate-f1", "2024", str(output)])
         assert not output.exists()
+
+
+# ---------------------------------------------------------------------------
+# --refresh flag
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateF1Refresh:
+    def test_refresh_flag_exits_zero(self, tmp_path: Path) -> None:
+        mock = _mock_get_json(_MEETINGS, _SESSIONS)
+        with patch.object(OpenF1Source, "_get_json", mock):
+            result = runner.invoke(
+                app, ["generate-f1", "2024", str(tmp_path / "cal.ics"), "--refresh"]
+            )
+        assert result.exit_code == 0
+
+    def test_refresh_flag_creates_ics_file(self, tmp_path: Path) -> None:
+        output = tmp_path / "f1-refresh.ics"
+        mock = _mock_get_json(_MEETINGS, _SESSIONS)
+        with patch.object(OpenF1Source, "_get_json", mock):
+            runner.invoke(app, ["generate-f1", "2024", str(output), "--refresh"])
+        assert output.exists()
+
+    def test_refresh_passes_flag_to_source(self, tmp_path: Path) -> None:
+        """Vérifie que refresh=True est transmis à OpenF1Source."""
+        mock = _mock_get_json(_MEETINGS, _SESSIONS)
+        captured: list[bool] = []
+
+        original_init = OpenF1Source.__init__
+
+        def patched_init(self, client=None, cache=None, *, refresh=False):  # type: ignore[no-untyped-def]
+            captured.append(refresh)
+            original_init(self, client=client, cache=cache, refresh=refresh)
+
+        with patch.object(OpenF1Source, "__init__", patched_init):
+            with patch.object(OpenF1Source, "_get_json", mock):
+                runner.invoke(
+                    app, ["generate-f1", "2024", str(tmp_path / "cal.ics"), "--refresh"]
+                )
+
+        assert captured == [True]
+
+    def test_no_refresh_flag_passes_false_to_source(self, tmp_path: Path) -> None:
+        mock = _mock_get_json(_MEETINGS, _SESSIONS)
+        captured: list[bool] = []
+
+        original_init = OpenF1Source.__init__
+
+        def patched_init(self, client=None, cache=None, *, refresh=False):  # type: ignore[no-untyped-def]
+            captured.append(refresh)
+            original_init(self, client=client, cache=cache, refresh=refresh)
+
+        with patch.object(OpenF1Source, "__init__", patched_init):
+            with patch.object(OpenF1Source, "_get_json", mock):
+                runner.invoke(app, ["generate-f1", "2024", str(tmp_path / "cal.ics")])
+
+        assert captured == [False]

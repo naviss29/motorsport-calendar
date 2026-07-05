@@ -43,6 +43,9 @@ dmypy.json
 *.tar.gz
 *.whl
 
+# Cache HTTP local
+.cache/
+
 # Secrets
 .env
 .env.*

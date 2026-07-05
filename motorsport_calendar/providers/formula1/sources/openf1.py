@@ -6,6 +6,7 @@ from datetime import datetime
 
 import httpx
 
+from motorsport_calendar.cache import HttpCache
 from motorsport_calendar.models import (
     Championship,
     ChampionshipCategory,
@@ -70,21 +71,35 @@ class OpenF1Source(Formula1Source):
     ``/sessions`` (individual sessions). Sessions are grouped by
     ``meeting_key`` and attached to their parent Event.
 
+    Results are transparently cached on disk (via ``HttpCache``) to avoid
+    repeated network calls. Pass ``refresh=True`` to bypass the cache.
+
     Args:
         client: Optional ``httpx.AsyncClient`` to inject (useful in tests).
                 When omitted a default client targeting ``api.openf1.org``
                 with a 10-second timeout is created.
+                When provided, cache is disabled by default (test mode).
+        cache: Optional ``HttpCache`` instance. Defaults to ``HttpCache()``
+               (``{cwd}/.cache/``, TTL 24 h) when no custom client is given.
+               Pass ``None`` to disable caching explicitly.
+        refresh: When True, ignore any cached data and re-fetch from the API.
 
     Raises:
         httpx.HTTPStatusError: Propagated on HTTP 4xx / 5xx responses.
         httpx.TimeoutException: Propagated when the API exceeds 10 seconds.
     """
 
-    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client or httpx.AsyncClient(
-            base_url=_BASE_URL,
-            timeout=_TIMEOUT,
-        )
+    def __init__(
+        self,
+        client: httpx.AsyncClient | None = None,
+        cache: HttpCache | None = None,
+        *,
+        refresh: bool = False,
+    ) -> None:
+        self._client = client or httpx.AsyncClient(base_url=_BASE_URL, timeout=_TIMEOUT)
+        # When a custom client is injected (test mode), disable cache unless explicitly provided.
+        self._cache = cache if cache is not None else (HttpCache() if client is None else None)
+        self._refresh = refresh
 
     async def get_season(self, year: int) -> list[Event]:
         meetings_raw = await self._get_json("/meetings", {"year": year})
@@ -111,10 +126,18 @@ class OpenF1Source(Formula1Source):
     # ------------------------------------------------------------------
 
     async def _get_json(self, path: str, params: dict[str, int]) -> list[dict]:
-        response = await self._client.get(path, params=params)
-        response.raise_for_status()
-        result: list[dict] = response.json()
-        return result
+        url = f"{_BASE_URL}{path}"
+
+        async def _do_fetch(_url: str, _params: dict) -> list[dict]:
+            response = await self._client.get(path, params=_params)
+            response.raise_for_status()
+            return response.json()  # type: ignore[no-any-return]
+
+        if self._cache is not None:
+            result = await self._cache.get_json(url, params, _do_fetch, refresh=self._refresh)
+            return result  # type: ignore[return-value]
+
+        return await _do_fetch(url, params)
 
 
 # ---------------------------------------------------------------------------

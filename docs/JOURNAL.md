@@ -2,7 +2,60 @@
 
 ---
 
-## Session 2026-07-05
+## Session 2026-07-05 — Sprint 6 : Cache HTTP centralisé
+
+### Objectif
+Créer un cache HTTP mutualisé, indépendant de httpx, réutilisable par tous les futurs providers. Migrer OpenF1Source. Ajouter `--refresh` à la CLI.
+
+### Travail effectué
+
+**Module `motorsport_calendar/cache/`**
+- `HttpCache` : cache disque JSON, TTL configurable (défaut 24h), clé SHA-256(url + params triés)
+- API : `get_json(url, params, fetch, *, refresh)` / `invalidate()` / `clear()`
+- Aucune dépendance httpx : le caller fournit la coroutine `fetch`
+- Création automatique du dossier `.cache/`
+
+**Migration OpenF1Source**
+- Nouveaux paramètres : `cache: HttpCache | None`, `refresh: bool = False`
+- Heuristique backward-compat : client injecté (tests) → cache désactivé par défaut → 45 tests existants non touchés
+- `_get_json` : route via cache si présent, appel direct sinon
+
+**CLI `generate-f1`**
+- Ajout `--refresh` (boolean flag)
+- Propagation `refresh=True` → `OpenF1Source(refresh=True)` → `HttpCache.get_json(refresh=True)`
+
+**Tests**
+- 24 tests unitaires `HttpCache` (miss, hit, expiry, refresh, corruption, invalidate, clear)
+- 4 tests CLI `--refresh` (exit 0, fichier créé, flag propagé True/False)
+- 45 tests OpenF1Source : aucune modification, tous passants
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `motorsport_calendar/cache/__init__.py` | Créé |
+| `motorsport_calendar/cache/http_cache.py` | Créé |
+| `motorsport_calendar/providers/formula1/sources/openf1.py` | Modifié — ajout cache + refresh |
+| `motorsport_calendar/cli.py` | Modifié — ajout `--refresh` |
+| `tests/test_http_cache.py` | Créé — 24 tests |
+| `tests/test_cli_generate_f1.py` | Modifié — 4 tests --refresh |
+| `.gitignore` | Modifié — ajout `.cache/` |
+| `docs/AI_CONTEXT.md` | Mis à jour |
+| `docs/JOURNAL.md` | Mis à jour |
+| `docs/DECISIONS.md` | ADR-008 ajouté |
+| `docs/TODO.md` | Mis à jour |
+
+### Bugs rencontrés
+Aucun. La heuristique "client injecté = cache désactivé" a permis d'éviter de toucher les 45 tests existants.
+
+### Tests exécutés
+```
+158 passed — 0 failed — couverture 89 %
+```
+
+---
+
+## Session 2026-07-05 — Phase 7 + documentation initiale
 
 ### Objectif
 Finaliser le MVP Formula 1 : commande CLI `generate-f1` + tests d'intégration + documentation projet.

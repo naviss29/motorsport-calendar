@@ -86,3 +86,6 @@
 - [x] Architecture Provider/Source F1
 - [x] OpenF1Source (httpx, mapping, 45 tests)
 - [x] CLI `generate-f1 YEAR OUTPUT.ics` (11 tests intégration)
+- [x] HttpCache — cache disque JSON centralisé, TTL, refresh, 24 tests
+- [x] Migration OpenF1Source → HttpCache
+- [x] CLI `--refresh` flag

@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : MVP F1 terminé — prêt pour v0.2.0
-- **Tests** : 130 passants, 0 échouants — couverture 87 %
+- **Phase** : Sprint 6 — Cache HTTP centralisé terminé
+- **Tests** : 158 passants, 0 échouants — couverture 89 %
 - **Branche** : `master`
 
 ---
@@ -36,6 +36,10 @@
 
 ```
 motorsport_calendar/
+├── cache/
+│   ├── __init__.py          # export HttpCache
+│   └── http_cache.py        # ✅ HttpCache — cache disque JSON, TTL, indépendant httpx
+│
 ├── models/                  # Pydantic frozen — NE PAS MODIFIER sans ADR
 │   ├── championship.py      # Championship, ChampionshipCategory
 │   ├── circuit.py           # Circuit
@@ -48,7 +52,7 @@ motorsport_calendar/
 │       ├── provider.py      # Formula1Provider — délègue à Formula1Source
 │       ├── source.py        # Formula1Source (ABC) — get_season(year)
 │       └── sources/
-│           ├── openf1.py    # ✅ IMPLÉMENTÉ — API openf1.org (2023+)
+│           ├── openf1.py    # ✅ IMPLÉMENTÉ — API openf1.org + HttpCache
 │           ├── ergast.py    # 🔴 STUB — raise NotImplementedError
 │           ├── official.py  # 🔴 STUB — raise NotImplementedError
 │           └── cached.py    # 🔴 STUB — raise NotImplementedError
@@ -57,7 +61,7 @@ motorsport_calendar/
 │   ├── base.py              # Exporter (ABC) — export / export_to_string
 │   └── ics.py               # ✅ IMPLÉMENTÉ — RFC 5545, 1 VEVENT par Session
 │
-├── cli.py                   # Typer CLI — generate-f1, export (stub), providers, version
+├── cli.py                   # Typer CLI — generate-f1 (--refresh), export (stub)
 ├── core/service.py          # 🔴 NON IMPLÉMENTÉ — placeholder
 └── utils/logging.py         # 🔴 NON IMPLÉMENTÉ — placeholder
 ```
@@ -70,13 +74,14 @@ motorsport_calendar/
 2. **IcsExporter** — génère un fichier `.ics` valide RFC 5545, 1 VEVENT par session
 3. **Formula1Provider** — délègue à `Formula1Source`, injecte le championship
 4. **OpenF1Source** — appels HTTP réels via `httpx`, mapping complet, 25 circuits IANA, gestion sessions incomplètes
-5. **CLI `generate-f1`** — `motocal generate-f1 YEAR OUTPUT.ics`, gestion erreurs HTTP
+5. **CLI `generate-f1`** — `motocal generate-f1 YEAR OUTPUT.ics [--refresh]`, gestion erreurs HTTP
+6. **HttpCache** — cache disque JSON centralisé, TTL configurable, indépendant de httpx, `--refresh` pour bypass
 
 ---
 
 ## Fonctionnalités en cours / prochaines
 
-**Prochaine tâche recommandée** : implémenter `ErgastSource` pour les données historiques F1 (1950+).
+**Prochaine tâche recommandée** : implémenter `ErgastSource` pour les données historiques F1 (1950+). Le cache est déjà en place et sera utilisé automatiquement.
 
 Endpoint : `https://ergast.com/api/f1/{year}/races.json`
 Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py`
@@ -92,6 +97,8 @@ Tests cibles : `tests/test_ergast_source.py`
 - **event_uid** : `openf1-meeting-{meeting_key}@motorsport-calendar`
 - **UID VEVENT** : `{event_uid}-{session.type}`
 - **Sessions invalides** : `_build_session()` retourne `None` si date manquante, naive, ou end ≤ start.
+- **Cache** : `HttpCache(cache_dir, ttl)` — fichiers `{sha256}.json` dans `.cache/`. Quand `OpenF1Source(client=mock)` est utilisé en test, le cache est désactivé automatiquement (client injecté = mode test).
+- **`--refresh`** : passe `refresh=True` à `OpenF1Source`, propagé à `HttpCache.get_json(refresh=True)`.
 
 ---
 
@@ -102,6 +109,7 @@ Tests cibles : `tests/test_ergast_source.py`
 | `export` CLI est un stub (exit 1) | Commande inutilisable | HAUTE |
 | `ErgastSource` non implémentée | Pas de données historiques | HAUTE |
 | `CachedFormula1Source` non implémentée | Appels répétés à l'API | HAUTE |
+| Cache `.cache/` en CWD (pas `~/.cache/`) | Moins adapté au déploiement | BASSE |
 | `core/service.py` vide | Architecture incomplète | MOYENNE |
 | `utils/logging.py` vide | Pas de logs structurés | BASSE |
 | Couverture `cli.py` à 76 % | Branches non testées | MOYENNE |
@@ -114,9 +122,12 @@ Tests cibles : `tests/test_ergast_source.py`
 # Lancer les tests
 python -m pytest
 
-# Lancer un test spécifique
-python -m pytest tests/test_cli_generate_f1.py -v
+# Lancer les tests du cache uniquement
+python -m pytest tests/test_http_cache.py -v
 
-# Générer un calendrier F1 2024
+# Générer un calendrier F1 2024 (utilise le cache)
 motocal generate-f1 2024 f1-2024.ics
+
+# Forcer un re-téléchargement (ignore le cache)
+motocal generate-f1 2024 f1-2024.ics --refresh
 ```

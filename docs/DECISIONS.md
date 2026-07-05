@@ -109,3 +109,22 @@ Maintenir un dictionnaire statique `_CIRCUIT_TZ_MAP` dans `openf1.py` : 25 circu
 - Les VEVENTs ICS affichent les horaires locaux (meilleure UX).
 - Le dict doit être maintenu manuellement quand un nouveau circuit apparaît.
 - Fallback UTC évite un crash sur un circuit inconnu.
+
+---
+
+## ADR-008 — Cache HTTP centralisé indépendant de httpx
+
+**Contexte**
+Sans cache, chaque exécution de `motocal generate-f1` effectue 2 appels HTTP à OpenF1. Les futurs providers (Ergast, MotoGP…) auraient le même problème. Un cache ad hoc dans chaque provider violerait le principe DRY.
+
+**Décision**
+Créer `motorsport_calendar/cache/HttpCache` : cache disque JSON avec TTL.
+L'API reçoit une coroutine `fetch` (pas d'httpx.AsyncClient) pour rester indépendant de la bibliothèque HTTP.
+`OpenF1Source` active le cache uniquement si aucun client custom n'est injecté (heuristique "client injecté = mode test").
+Option `--refresh` en CLI propage `refresh=True` jusqu'au cache.
+
+**Conséquences**
+- Tous les futurs providers utilisent `HttpCache` sans code supplémentaire.
+- Les tests existants (`OpenF1Source(client=mock)`) ne nécessitent aucune modification.
+- Le cache est dans `.cache/` (CWD) — simple mais pas idéal pour un outil installé globalement (dette technique documentée).
+- `invalidate()` et `clear()` disponibles pour les cas avancés.

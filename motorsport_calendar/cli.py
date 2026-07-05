@@ -65,6 +65,10 @@ def providers() -> None:
 def generate_f1(
     year: Annotated[int, typer.Argument(help="Formula 1 season year (e.g. 2024)")],
     output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
 ) -> None:
     """Fetch the Formula 1 calendar via OpenF1 and export it as an ICS file."""
     import asyncio
@@ -76,11 +80,12 @@ def generate_f1(
     from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
 
     async def _fetch() -> list:
-        source = OpenF1Source()
+        source = OpenF1Source(refresh=refresh)
         provider = Formula1Provider(source)
         return await provider.fetch_events("formula1", year)
 
-    console.print(f"Fetching F1 [bold cyan]{year}[/] calendar from OpenF1…")
+    cache_note = " [yellow](--refresh : cache ignoré)[/]" if refresh else ""
+    console.print(f"Fetching F1 [bold cyan]{year}[/] calendar from OpenF1…{cache_note}")
 
     try:
         events = asyncio.run(_fetch())
