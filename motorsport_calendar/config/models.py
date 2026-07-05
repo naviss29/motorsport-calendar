@@ -36,17 +36,23 @@ class IcsConfig(BaseModel):
 
 
 class ProviderConfig(BaseModel):
-    """Configuration d'un provider (source sélectionnée)."""
+    """Configuration d'un provider (source sélectionnée + état activé)."""
 
     model_config = ConfigDict(frozen=True)
 
-    source: str
+    enabled: bool = True
+    source: str = ""
 
 
 class ProvidersConfig(BaseModel):
-    """Configuration de tous les providers."""
+    """Configuration de tous les providers.
 
-    model_config = ConfigDict(frozen=True)
+    Les champs nommés (formula1, wec) ont des défauts explicites.
+    Les futurs championnats apparaissent dans model_extra (extra="allow")
+    et sont accessibles via ProvidersConfig.get(championship_id).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="allow")
 
     formula1: ProviderConfig = Field(
         default_factory=lambda: ProviderConfig(source="openf1")
@@ -54,6 +60,23 @@ class ProvidersConfig(BaseModel):
     wec: ProviderConfig = Field(
         default_factory=lambda: ProviderConfig(source="official")
     )
+
+    def get(self, championship_id: str) -> "ProviderConfig | None":
+        """Retourne la config d'un provider par son ID, ou None si absent.
+
+        Cherche d'abord dans les champs nommés (formula1, wec),
+        puis dans les extras YAML (f2, elms, etc.).
+        """
+        if championship_id in type(self).model_fields:
+            return getattr(self, championship_id)
+        extras = self.model_extra or {}
+        if championship_id in extras:
+            val = extras[championship_id]
+            if isinstance(val, dict):
+                return ProviderConfig.model_validate(val)
+            if isinstance(val, ProviderConfig):
+                return val
+        return None
 
 
 class AppConfig(BaseModel):

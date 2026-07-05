@@ -152,6 +152,29 @@ Créer `motorsport_calendar/config/` avec :
 
 ---
 
+## ADR-011 — ProviderRegistry : auto-enregistrement par import
+
+**Contexte**
+Avec F1 et WEC coexistant, la CLI commençait à contenir `if source == "openf1": ...` et devrait grossir à chaque nouveau championnat. Il faut découpler la CLI de la connaissance des providers.
+
+**Décision**
+Créer `motorsport_calendar/core/registry.py` avec un `ProviderRegistry` singleton.
+Chaque `providers/X/__init__.py` s'enregistre automatiquement à l'import :
+```python
+registry.register("formula1", _make_provider)
+```
+La CLI appelle `registry.discover()` (qui importe tous les sous-paquets via `pkgutil.iter_modules`), puis `registry.get("formula1")` pour obtenir une factory.
+Pour ajouter un championnat : créer `providers/elms/` avec son `__init__.py` — zéro autre modification.
+
+**Conséquences**
+- La CLI ne connaît aucun provider individuellement.
+- `registry.enabled(config.providers)` filtre selon `enabled: bool` dans le YAML (logique opt-out : absent = activé).
+- `ProviderConfig` gagne `enabled: bool = True` et `source: str = ""` (optionnel).
+- `ProvidersConfig` gagne `extra="allow"` + méthode `get(championship_id)` pour les providers hors champs nommés.
+- 25 tests unitaires + d'intégration couvrent le registre à 100 %.
+
+---
+
 ## ADR-010 — VALARM dans IcsExporter via `alarm_minutes`
 
 **Contexte**

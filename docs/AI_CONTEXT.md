@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 8 — Configuration centralisée terminée
-- **Tests** : 219 passants, 0 échouants — couverture 91 %
+- **Phase** : Sprint 9 — ProviderRegistry terminé
+- **Tests** : 250 passants, 0 échouants — couverture 93 %
 - **Branche** : `master`
 
 ---
@@ -48,34 +48,38 @@ motorsport_calendar/
 │
 ├── providers/
 │   ├── base.py              # Provider (ABC) — fetch_events / fetch_championship
-│   └── formula1/
-│       ├── provider.py      # Formula1Provider — délègue à Formula1Source
-│       ├── source.py        # Formula1Source (ABC) — get_season(year)
+│   ├── formula1/
+│   │   ├── __init__.py      # ✅ auto-register : registry.register("formula1", _make_provider)
+│   │   ├── provider.py      # Formula1Provider — délègue à Formula1Source
+│   │   ├── source.py        # Formula1Source (ABC) — get_season(year)
+│   │   └── sources/
+│   │       ├── openf1.py    # ✅ IMPLÉMENTÉ — API openf1.org + HttpCache
+│   │       ├── ergast.py    # 🔴 STUB — raise NotImplementedError
+│   │       ├── official.py  # 🔴 STUB — raise NotImplementedError
+│   │       └── cached.py    # 🔴 STUB — raise NotImplementedError
+│   └── wec/
+│       ├── __init__.py      # ✅ auto-register : registry.register("wec", _make_provider)
+│       ├── provider.py      # ✅ WecProvider — délègue à WecSource
+│       ├── source.py        # ✅ WecSource (ABC) — get_season(year)
 │       └── sources/
-│           ├── openf1.py    # ✅ IMPLÉMENTÉ — API openf1.org + HttpCache
-│           ├── ergast.py    # 🔴 STUB — raise NotImplementedError
-│           ├── official.py  # 🔴 STUB — raise NotImplementedError
-│           └── cached.py    # 🔴 STUB — raise NotImplementedError
+│           ├── __init__.py
+│           └── official.py  # 🔴 STUB — raise NotImplementedError
 │
 ├── config/
 │   ├── __init__.py          # export ConfigService + tous les modèles
 │   ├── models.py            # ✅ AppConfig, CacheConfig, IcsConfig, ProvidersConfig, ProviderConfig
 │   └── service.py           # ✅ ConfigService — lit config.yaml, merge avec défauts Pydantic
 │
-├── providers/wec/
-│   ├── __init__.py          # export WecProvider, WecSource
-│   ├── provider.py          # ✅ WecProvider — délègue à WecSource
-│   ├── source.py            # ✅ WecSource (ABC) — get_season(year)
-│   └── sources/
-│       ├── __init__.py
-│       └── official.py      # 🔴 STUB — raise NotImplementedError
+├── core/
+│   ├── __init__.py          # export ProviderRegistry + registry singleton
+│   ├── registry.py          # ✅ ProviderRegistry — register/get/list_all/enabled/discover
+│   └── service.py           # 🔴 NON IMPLÉMENTÉ — placeholder
 │
 ├── exporters/
 │   ├── base.py              # Exporter (ABC) — export / export_to_string
 │   └── ics.py               # ✅ IMPLÉMENTÉ — RFC 5545, 1 VEVENT par Session
 │
-├── cli.py                   # Typer CLI — generate-f1 (--refresh), export (stub)
-├── core/service.py          # 🔴 NON IMPLÉMENTÉ — placeholder
+├── cli.py                   # Typer CLI — generate-f1 (--refresh), providers, export (stub)
 └── utils/logging.py         # 🔴 NON IMPLÉMENTÉ — placeholder
 ```
 
@@ -92,6 +96,7 @@ motorsport_calendar/
 7. **WecProvider** — architecture identique à F1 (`WecSource` ABC + `OfficialWecSource` stub), `ChampionshipCategory.ENDURANCE`
 8. **ConfigService** — lit `config.yaml` (CWD puis `~/.config/…`), valeurs par défaut Pydantic, validation automatique
 9. **IcsExporter** — ajout VALARM configurable via `alarm_minutes` (0 = désactivé)
+10. **ProviderRegistry** — `register/get/list_all/enabled/discover`, auto-enregistrement à l'import de `__init__.py`
 
 ---
 
@@ -99,9 +104,9 @@ motorsport_calendar/
 
 **Prochaines tâches recommandées** :
 
-1. **Implémenter `OfficialWecSource`** — récupérer les données WEC (endpoint officiel ou scraping fiawec.com)
-2. **CLI `generate-wec YEAR OUTPUT.ics`** — identique à `generate-f1`, utilise `WecProvider(OfficialWecSource())`
-3. **CLI `generate YEAR OUTPUT.ics`** — merge F1 + WEC dans un seul calendrier ICS
+1. **CLI `generate-wec YEAR OUTPUT.ics`** — utilise `registry.get("wec")`, symétrique à `generate-f1`
+2. **CLI `generate YEAR OUTPUT.ics`** — itère `registry.enabled(config.providers)`, merge tous les ICS
+3. **Implémenter `OfficialWecSource`** — endpoint `fiawec.com` (investigation API/scraping nécessaire)
 
 Endpoint : `https://ergast.com/api/f1/{year}/races.json`
 Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py`
@@ -124,7 +129,11 @@ Tests cibles : `tests/test_ergast_source.py`
 - **Config** : `ConfigService(config_path=None)` — cherche `config.yaml` dans CWD puis `~/.config/motorsport-calendar/`. Aucun fichier → défauts complets.
 - **config.yaml** : ignoré par git (personnel). `config.example.yaml` commité comme référence.
 - **VALARM** : `IcsExporter(alarm_minutes=N)` — N>0 → `TRIGGER:-PTNm` dans chaque VEVENT. CLI lit `config.ics.alarm_minutes`.
-- **Source selection** : CLI lit `config.providers.formula1.source` — source inconnue → exit 1 avec message clair.
+- **ProviderRegistry** : singleton `motorsport_calendar.core.registry.registry`. Providers s'enregistrent via leur `__init__.py`. CLI appelle `registry.discover()` puis `registry.get("formula1")` → factory `(cfg, cache, refresh) → Provider`.
+- **Auto-enregistrement** : importer n'importe quoi de `providers/formula1/` suffit à déclencher `formula1/__init__.py` → registration. `discover()` force l'import si rien n'a encore été importé (cold start CLI).
+- **ProviderConfig** : `enabled: bool = True` (opt-out), `source: str = ""` (optionnel — factory fallback vers sa valeur par défaut si vide).
+- **ProvidersConfig.get(id)** : cherche dans les champs nommés (`formula1`, `wec`) puis dans `model_extra` (providers YAML extra). Retourne `None` si absent (= activé par défaut dans `registry.enabled()`).
+- **Source selection** : factory du provider sélectionne la source depuis `cfg.source` — source inconnue → `ValueError` → CLI exit 1 avec message clair.
 
 ---
 

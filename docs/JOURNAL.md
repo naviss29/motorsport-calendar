@@ -2,6 +2,61 @@
 
 ---
 
+## Session 2026-07-05 — Sprint 9 : Provider Registry
+
+### Objectif
+Créer un `ProviderRegistry` central. Chaque provider s'enregistre automatiquement à l'import de son `__init__.py`. La CLI ne connaît plus aucun provider individuellement.
+
+### Travail effectué
+
+**`motorsport_calendar/core/registry.py`** — nouveau fichier
+- `ProviderRegistry` : `register()`, `get()`, `list_all()`, `enabled()`, `discover()`
+- `registry` singleton partagé par toute l'application
+- `discover()` : `pkgutil.iter_modules` sur `providers/` → importe chaque sous-paquet
+- `enabled(providers_config)` : logique opt-out (absent de la config = activé)
+- Couverture 100 %
+
+**`motorsport_calendar/config/models.py`**
+- `ProviderConfig` : ajout `enabled: bool = True` et `source: str = ""` (source optionnelle)
+- `ProvidersConfig` : ajout `extra="allow"` (Pydantic stocke les providers YAML hors nommés) + méthode `get(championship_id)` (cherche champs nommés puis extras)
+
+**`motorsport_calendar/providers/formula1/__init__.py`**
+- Ajout import `registry` + factory `_make_provider(cfg, cache, refresh)` → `Formula1Provider(OpenF1Source(...))`
+- `registry.register("formula1", _make_provider)` à l'import
+
+**`motorsport_calendar/providers/wec/__init__.py`**
+- Ajout import `registry` + factory `_make_provider(cfg, cache, refresh)` → `WecProvider(OfficialWecSource())`
+- `registry.register("wec", _make_provider)` à l'import
+
+**`motorsport_calendar/cli.py`**
+- `generate-f1` : remplace la logique `if source == "openf1"` par `registry.discover()` + `registry.get("formula1")`
+- `providers` : mise à jour — affiche la liste depuis `registry.list_all()`
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `motorsport_calendar/core/registry.py` | Créé |
+| `motorsport_calendar/core/__init__.py` | Modifié — export ProviderRegistry + registry |
+| `motorsport_calendar/config/models.py` | Modifié — enabled + source optionnels + get() |
+| `motorsport_calendar/providers/formula1/__init__.py` | Modifié — auto-enregistrement |
+| `motorsport_calendar/providers/wec/__init__.py` | Modifié — auto-enregistrement |
+| `motorsport_calendar/cli.py` | Modifié — registry-driven, providers cmd fonctionnelle |
+| `config.example.yaml` | Modifié — champ enabled documenté |
+| `tests/test_registry.py` | Créé — 25 tests |
+| `tests/test_config_service.py` | Modifié — 7 tests ajoutés (enabled, get) |
+| `docs/DECISIONS.md` | ADR-011 ajouté |
+
+### Bugs rencontrés
+Aucun.
+
+### Tests exécutés
+```
+250 passed — 0 failed — couverture 93 %
+```
+
+---
+
 ## Session 2026-07-05 — Sprint 8 : Configuration centralisée
 
 ### Objectif

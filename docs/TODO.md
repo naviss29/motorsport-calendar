@@ -41,13 +41,20 @@
 
 ## CLI
 
+- [ ] 🔴 CLI `generate-wec YEAR OUTPUT.ics` — identique à `generate-f1`, utilise `registry.get("wec")`
+  - Dépend de : OfficialWecSource ou ProviderRegistry (déjà en place)
+  - Estimation : 1h
+
+- [ ] 🔴 CLI `generate YEAR OUTPUT.ics` — itère `registry.enabled(config.providers)`, merge tous les ICS
+  - Dépend de : generate-f1 + generate-wec fonctionnels
+  - Estimation : 2h
+
 - [ ] 🔴 Commande `export` — implémentation réelle (actuellement stub exit 1)
   - Dépend de : ErgastSource ou OpenF1Source
-  - Estimation : 2h (wiring provider registry + exporter)
+  - Estimation : 2h
 
-- [ ] 🟡 Commande `providers` — lister les providers disponibles avec leurs sources
-  - Dépend de : provider registry
-  - Estimation : 1h
+- [x] 🟡 Commande `providers` — liste les providers enregistrés via registry.list_all()
+  - Terminé Sprint 9
 
 - [ ] 🟡 Option `--year` avec validation (≥ 1950 pour Ergast, ≥ 2023 pour OpenF1)
   - Estimation : 30min
@@ -109,3 +116,4 @@
 - [x] ConfigService — config.yaml, Pydantic, valeurs par défaut, 30 tests
 - [x] IcsExporter — VALARM configurable (alarm_minutes), 7 tests
 - [x] CLI generate-f1 — wiring ConfigService (cache path/TTL, source selection, alarm)
+- [x] ProviderRegistry — register/get/list_all/enabled/discover, auto-enregistrement à l'import, 25 tests

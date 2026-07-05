@@ -83,6 +83,37 @@ class TestProvidersConfigDefaults:
         config = ProvidersConfig()
         assert config.formula1.source != config.wec.source
 
+    def test_provider_config_enabled_true_by_default(self) -> None:
+        assert ProviderConfig(source="openf1").enabled is True
+
+    def test_provider_config_can_be_disabled(self) -> None:
+        assert ProviderConfig(source="openf1", enabled=False).enabled is False
+
+    def test_providers_config_get_formula1_returns_correct_config(self) -> None:
+        config = ProvidersConfig()
+        pc = config.get("formula1")
+        assert pc is not None
+        assert pc.source == "openf1"
+
+    def test_providers_config_get_wec_returns_correct_config(self) -> None:
+        config = ProvidersConfig()
+        pc = config.get("wec")
+        assert pc is not None
+        assert pc.source == "official"
+
+    def test_providers_config_get_unknown_returns_none(self) -> None:
+        config = ProvidersConfig()
+        assert config.get("f2") is None
+
+    def test_providers_config_get_extra_from_yaml(self) -> None:
+        """Un provider extra (non nommé) défini dans le YAML est accessible via get()."""
+        config = ProvidersConfig.model_validate(
+            {"formula1": {"source": "openf1"}, "f2": {"enabled": False}}
+        )
+        pc = config.get("f2")
+        assert pc is not None
+        assert pc.enabled is False
+
 
 # ---------------------------------------------------------------------------
 # ConfigService — pas de fichier

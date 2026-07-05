@@ -52,13 +52,22 @@ def version() -> None:
 @app.command()
 def providers() -> None:
     """List all registered data providers."""
-    table = Table(title="Registered Providers", show_header=True, header_style="bold cyan")
-    table.add_column("Name", style="green")
-    table.add_column("Championships", style="white")
+    from motorsport_calendar.core.registry import registry
 
-    # Populated once providers are implemented
+    registry.discover()
+    all_ids = registry.list_all()
+
+    table = Table(title="Registered Providers", show_header=True, header_style="bold cyan")
+    table.add_column("Championship ID", style="green")
+
+    if not all_ids:
+        console.print(table)
+        console.print("[yellow]No providers registered.[/]")
+        return
+
+    for cid in all_ids:
+        table.add_row(cid)
     console.print(table)
-    console.print("[yellow]No providers registered yet.[/]")
 
 
 @app.command("generate-f1")
@@ -77,13 +86,11 @@ def generate_f1(
 
     from motorsport_calendar.cache import HttpCache
     from motorsport_calendar.config import ConfigService
+    from motorsport_calendar.core.registry import registry
     from motorsport_calendar.exporters.ics import IcsExporter
-    from motorsport_calendar.providers.formula1.provider import Formula1Provider
-    from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
 
     config = ConfigService()
 
-    # Construction du cache depuis la configuration
     cache: HttpCache | None = None
     if config.cache.enabled:
         cache = HttpCache(
@@ -91,23 +98,35 @@ def generate_f1(
             ttl=config.cache.ttl_seconds,
         )
 
-    # Sélection de la source F1 depuis la configuration
-    source_name = config.providers.formula1.source
-    if source_name == "openf1":
-        source = OpenF1Source(cache=cache, refresh=refresh)
-    else:
-        err_console.print(
-            f"Source F1 inconnue : '[bold]{source_name}[/]'. "
-            "Vérifier la clé [cyan]providers.formula1.source[/] dans config.yaml."
-        )
+    # Découverte et sélection du provider via le registre — la CLI ne connaît pas les providers
+    registry.discover()
+
+    try:
+        make_provider = registry.get("formula1")
+    except KeyError as exc:
+        err_console.print(str(exc))
+        raise typer.Exit(code=1)
+
+    provider_cfg = config.providers.get("formula1")
+    if provider_cfg is None:
+        from motorsport_calendar.config.models import ProviderConfig
+        provider_cfg = ProviderConfig(source="openf1")
+
+    try:
+        provider = make_provider(provider_cfg, cache, refresh)
+    except ValueError as exc:
+        err_console.print(str(exc))
         raise typer.Exit(code=1)
 
     async def _fetch() -> list:
-        provider = Formula1Provider(source)
         return await provider.fetch_events("formula1", year)
 
+    source_label = provider_cfg.source or "openf1"
     cache_note = " [yellow](--refresh)[/]" if refresh else ""
-    console.print(f"Fetching F1 [bold cyan]{year}[/] calendar from OpenF1…{cache_note}")
+    console.print(
+        f"Fetching F1 [bold cyan]{year}[/] calendar "
+        f"via [green]{source_label}[/]…{cache_note}"
+    )
 
     try:
         events = asyncio.run(_fetch())

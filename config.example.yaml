@@ -19,8 +19,14 @@ ics:
 
 providers:
   formula1:
+    # Activer / désactiver ce championnat (défaut : true — opt-out)
+    enabled: true
     # Source de données F1 : openf1 (API openf1.org, saisons 2023+)
     source: openf1
   wec:
+    enabled: true
     # Source de données WEC : official (site FIA WEC — non implémentée)
     source: official
+  # Exemple : désactiver un futur championnat sans toucher au code
+  # f2:
+  #   enabled: false
