@@ -9,7 +9,7 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 13 — README, CHANGELOG, ROADMAP — prêt pour le tag v0.1.0
+- **Phase** : Sprint 14 — Étude des sources de données terminée (`docs/DATA_SOURCES.md`)
 - **Tests** : 306 passants, 0 échouants — couverture 92 %
 - **Branche** : `master`
 
@@ -105,15 +105,17 @@ motorsport_calendar/
 
 ## Fonctionnalités en cours / prochaines
 
-**Prochaines tâches recommandées** :
+**Prochaines tâches recommandées** (voir `docs/DATA_SOURCES.md` pour l'étude complète) :
 
-1. **Implémenter `ErgastSource`** — données historiques F1 (1950+), endpoint `ergast.com/api/f1/{year}/races.json`
-2. **Implémenter `OfficialWecSource`** — endpoint `fiawec.com` (investigation API/scraping nécessaire)
-3. **CLI `generate-wec`** — fonctionnelle une fois `OfficialWecSource` implémentée
-
-Endpoint : `https://ergast.com/api/f1/{year}/races.json`
-Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py`
-Tests cibles : `tests/test_ergast_source.py`
+1. **`JolpicaSource`** (ex-ErgastSource) — données historiques F1 (1950+)
+   - Endpoint : `http://api.jolpi.ca/ergast/f1/{year}/races.json`
+   - Licence : Apache-2.0 — ⚠️ **Ergast est arrêté fin 2024, utiliser Jolpica**
+   - Fichier cible : `motorsport_calendar/providers/formula1/sources/ergast.py` (renommer en `jolpica.py`)
+   - Tests cibles : `tests/test_jolpica_source.py`
+2. **`OfficialWecSource`** — scraping HTML de `fiawec.com/en/season`
+   - Inspecter les XHR en DevTools avant d'implémenter
+3. **`ELMSSource`** — scraping `europeanlemansseries.com` (XHR d'abord, HTML sinon)
+4. **`Formula2Source`** — scraping `fiaformula2.com/Calendar` + venues réutilisées du provider F1
 
 ---
 

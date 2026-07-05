@@ -41,8 +41,8 @@
 
 | Fonctionnalité | Priorité |
 |---|---|
-| `ErgastSource` — données historiques F1 (1950+), API ergast.com | 🔴 HAUTE |
-| `OfficialWecSource` — calendrier FIA WEC (investigation endpoint fiawec.com) | 🔴 HAUTE |
+| `JolpicaSource` — données historiques F1 (1950+), `api.jolpi.ca` (successeur Ergast, Apache-2.0) | 🔴 HAUTE |
+| `OfficialWecSource` — calendrier FIA WEC, scraping `fiawec.com` (voir DATA_SOURCES.md) | 🔴 HAUTE |
 | `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | 🟡 MOYENNE |
 | `URL` dans les VEVENTs (lien source officielle) | 🟡 MOYENNE |
 | Retry avec backoff exponentiel sur erreurs HTTP (max 3 tentatives) | 🟢 BASSE |
@@ -52,15 +52,17 @@
 
 ## v0.3.0 — Nouvelles disciplines
 
-| Fonctionnalité | Priorité |
-|---|---|
-| `ELMSProvider` — European Le Mans Series | 🔴 HAUTE |
-| `LeMansProvider` — Michelin Le Mans Cup + Road to Le Mans | 🔴 HAUTE |
-| `Formula2Provider` | 🟡 MOYENNE |
-| `Formula3Provider` | 🟡 MOYENNE |
-| `F1AcademyProvider` | 🟡 MOYENNE |
-| Export JSON (machine-readable) | 🟢 BASSE |
-| Export CSV | 🟢 BASSE |
+Sources documentées dans `docs/DATA_SOURCES.md`.
+
+| Fonctionnalité | Source | Priorité |
+|---|---|---|
+| `ELMSProvider` — European Le Mans Series | Scraping `europeanlemansseries.com` (XHR first) | 🔴 HAUTE |
+| `Formula2Provider` | Scraping `fiaformula2.com` + venues F1 | 🔴 HAUTE |
+| `Formula3Provider` | Scraping `fiaformula3.com` + venues F1 | 🟡 MOYENNE |
+| `LeMansProvider` — Michelin Le Mans Cup + Road to Le Mans | Scraping `lemanscup.com` (JS-rendered) | 🟡 MOYENNE |
+| `F1AcademyProvider` | Scraping `f1academy.com` + venues F1 | 🟡 MOYENNE |
+| `PorscheSupercupProvider` | Scraping `racing.porsche.com` + venues F1 | 🟢 BASSE |
+| Export JSON (machine-readable) | — | 🟢 BASSE |
 
 ---
 
