@@ -2,6 +2,44 @@
 
 ---
 
+## Session 2026-07-05 — Sprint 11 : CLI generate-wec
+
+### Objectif
+Ajouter la commande `motocal generate-wec YEAR OUTPUT.ics`, symétrique à `generate-f1`.
+
+### Travail effectué
+
+**`motorsport_calendar/cli.py`**
+- Nouvelle commande `generate-wec` : même orchestration que `generate-f1`
+- `source_registry.get("wec", source_name)` + `registry.get("wec")(source)`
+- Gestion spécifique `NotImplementedError` : message clair "source non encore implémentée" → exit 1
+- Flags : `YEAR`, `OUTPUT`, `--refresh`
+
+**`tests/test_cli_generate_wec.py`** — 16 tests
+- Happy path : exit 0, fichier créé, VCALENDAR, 3 VEVENTs (2 events, sessions mixtes), locations, saison vide
+- Appel unique à `get_season` (vs 2 appels `_get_json` pour F1)
+- Transmission du `year` correct au source
+- Error path : `NotImplementedError` (stub réel — aucun mock), HTTP 503/404, timeout
+- Flag `--refresh` : exit 0, fichier créé
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `motorsport_calendar/cli.py` | Modifié — ajout generate-wec |
+| `tests/test_cli_generate_wec.py` | Créé — 16 tests |
+| `docs/TODO.md` | Mis à jour |
+
+### Bugs rencontrés
+- `Circuit` a des champs requis supplémentaires (`id`, `city`, `timezone`) non documentés dans le résumé de session — corrigé dans les données de test.
+
+### Tests exécutés
+```
+289 passed — 0 failed — couverture 92 %
+```
+
+---
+
 ## Session 2026-07-05 — Sprint 10 : Source Registry
 
 ### Objectif

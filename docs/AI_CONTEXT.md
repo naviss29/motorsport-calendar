@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 10 — SourceRegistry terminé — architecture figée
-- **Tests** : 273 passants, 0 échouants — couverture 93 %
+- **Phase** : Sprint 11 — generate-wec terminé
+- **Tests** : 289 passants, 0 échouants — couverture 92 %
 - **Branche** : `master`
 
 ---
@@ -106,8 +106,8 @@ motorsport_calendar/
 
 **Prochaines tâches recommandées** :
 
-1. **CLI `generate-wec YEAR OUTPUT.ics`** — utilise `registry.get("wec")`, symétrique à `generate-f1`
-2. **CLI `generate YEAR OUTPUT.ics`** — itère `registry.enabled(config.providers)`, merge tous les ICS
+1. **CLI `generate YEAR OUTPUT.ics`** — itère `registry.enabled(config.providers)`, merge F1 + WEC en un seul ICS
+2. **Implémenter `ErgastSource`** — données historiques F1 (1950+), endpoint `ergast.com/api/f1/{year}/races.json`
 3. **Implémenter `OfficialWecSource`** — endpoint `fiawec.com` (investigation API/scraping nécessaire)
 
 Endpoint : `https://ergast.com/api/f1/{year}/races.json`

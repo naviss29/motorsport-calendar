@@ -41,12 +41,10 @@
 
 ## CLI
 
-- [ ] 🔴 CLI `generate-wec YEAR OUTPUT.ics` — identique à `generate-f1`, utilise `registry.get("wec")`
-  - Dépend de : OfficialWecSource ou ProviderRegistry (déjà en place)
-  - Estimation : 1h
+- [x] 🔴 CLI `generate-wec YEAR OUTPUT.ics` — terminé, 16 tests (+ NotImplementedError géré gracieusement)
 
 - [ ] 🔴 CLI `generate YEAR OUTPUT.ics` — itère `registry.enabled(config.providers)`, merge tous les ICS
-  - Dépend de : generate-f1 + generate-wec fonctionnels
+  - Dépend de : generate-f1 + generate-wec ✅
   - Estimation : 2h
 
 - [ ] 🔴 Commande `export` — implémentation réelle (actuellement stub exit 1)
