@@ -5,90 +5,188 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from motorsport_calendar.models import Championship, Circuit, Event, SessionType
+from motorsport_calendar.models import (
+    Championship,
+    ChampionshipCategory,
+    Circuit,
+    Event,
+    Session,
+    SessionType,
+)
+
+TZ = timezone.utc
+
+
+# ---------------------------------------------------------------------------
+# SessionType
+# ---------------------------------------------------------------------------
 
 
 class TestSessionType:
-    def test_values_are_strings(self) -> None:
-        assert SessionType.RACE == "race"
-        assert SessionType.QUALIFYING == "qualifying"
-        assert SessionType.PRACTICE_1 == "practice_1"
+    def test_all_values_defined(self) -> None:
+        values = {s.value for s in SessionType}
+        assert values == {
+            "FP1", "FP2", "FP3",
+            "QUALIFYING", "SPRINT_QUALIFYING", "SPRINT",
+            "RACE", "FREE_PRACTICE", "TEST", "HYPERPOLE",
+        }
 
-    def test_all_members_present(self) -> None:
-        names = {s.value for s in SessionType}
-        assert "race" in names
-        assert "qualifying" in names
-        assert "sprint" in names
-
-
-class TestEvent:
-    def test_creation(self, sample_event: Event) -> None:
-        assert sample_event.id == "f1-2025-01-race"
-        assert sample_event.session_type == SessionType.RACE
-        assert sample_event.round_number == 1
-
-    def test_optional_fields_default_to_none(self) -> None:
-        event = Event(
-            id="test",
-            name="Test Session",
-            session_type=SessionType.QUALIFYING,
-            start_time=datetime(2025, 1, 1, 12, 0, tzinfo=timezone.utc),
-            end_time=datetime(2025, 1, 1, 13, 0, tzinfo=timezone.utc),
-            timezone="UTC",
-        )
-        assert event.round_number is None
-        assert event.url is None
-        assert event.notes is None
-
-    def test_invalid_session_type_raises(self) -> None:
-        with pytest.raises(ValidationError):
-            Event(
-                id="test",
-                name="Test",
-                session_type="not_a_valid_type",  # type: ignore[arg-type]
-                start_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                end_time=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                timezone="UTC",
-            )
+    def test_is_str(self) -> None:
+        assert isinstance(SessionType.RACE, str)
+        assert SessionType.RACE == "RACE"
 
 
-class TestCircuit:
-    def test_creation(self, sample_circuit: Circuit) -> None:
-        assert sample_circuit.id == "albert-park"
-        assert sample_circuit.country == "Australia"
-        assert sample_circuit.timezone == "Australia/Melbourne"
-
-    def test_latitude_bounds(self) -> None:
-        with pytest.raises(ValidationError):
-            Circuit(
-                id="invalid",
-                name="Invalid",
-                country="XX",
-                timezone="UTC",
-                latitude=91.0,  # out of bounds
-            )
-
-    def test_longitude_bounds(self) -> None:
-        with pytest.raises(ValidationError):
-            Circuit(
-                id="invalid",
-                name="Invalid",
-                country="XX",
-                timezone="UTC",
-                longitude=181.0,  # out of bounds
-            )
+# ---------------------------------------------------------------------------
+# Championship
+# ---------------------------------------------------------------------------
 
 
 class TestChampionship:
-    def test_creation(self, sample_championship: Championship) -> None:
-        assert sample_championship.id == "f1-2025"
-        assert sample_championship.year == 2025
-        assert len(sample_championship.events) == 1
+    def test_creation(self, f1: Championship) -> None:
+        assert f1.id == "f1"
+        assert f1.name == "Formula 1 World Championship"
+        assert f1.category == ChampionshipCategory.SINGLE_SEATER
 
-    def test_empty_events_by_default(self) -> None:
-        c = Championship(id="wec-2025", name="WEC", year=2025, sport="wec")
-        assert c.events == []
+    def test_all_categories_valid(self) -> None:
+        for cat in ChampionshipCategory:
+            c = Championship(id="x", name="X", category=cat)
+            assert c.category == cat
 
-    def test_year_bounds(self) -> None:
+    def test_invalid_category_raises(self) -> None:
         with pytest.raises(ValidationError):
-            Championship(id="x", name="X", year=1900, sport="f1")
+            Championship(id="x", name="X", category="Drone Racing")  # type: ignore[arg-type]
+
+    def test_immutable(self, f1: Championship) -> None:
+        with pytest.raises(ValidationError):
+            f1.name = "Changed"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Circuit
+# ---------------------------------------------------------------------------
+
+
+class TestCircuit:
+    def test_creation(self, albert_park: Circuit) -> None:
+        assert albert_park.id == "albert-park"
+        assert albert_park.city == "Melbourne"
+        assert albert_park.country == "Australia"
+        assert albert_park.timezone == "Australia/Melbourne"
+
+    def test_all_fields_required(self) -> None:
+        with pytest.raises(ValidationError):
+            Circuit(id="x", name="X", city="Paris", country="France")  # type: ignore[call-arg]
+
+    def test_immutable(self, albert_park: Circuit) -> None:
+        with pytest.raises(ValidationError):
+            albert_park.name = "Changed"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Session
+# ---------------------------------------------------------------------------
+
+
+class TestSession:
+    def test_creation(self, race_session: Session) -> None:
+        assert race_session.type == SessionType.RACE
+        assert race_session.title == "Australian Grand Prix — Race"
+        assert race_session.description == "Round 1 of the 2025 season."
+
+    def test_description_optional(self, qualifying_session: Session) -> None:
+        assert qualifying_session.description is None
+
+    def test_naive_start_datetime_raises(self) -> None:
+        with pytest.raises(ValidationError, match="timezone-aware"):
+            Session(
+                type=SessionType.RACE,
+                start_datetime=datetime(2025, 3, 16, 5, 0),  # naive
+                end_datetime=datetime(2025, 3, 16, 7, 0, tzinfo=TZ),
+                title="Race",
+            )
+
+    def test_naive_end_datetime_raises(self) -> None:
+        with pytest.raises(ValidationError, match="timezone-aware"):
+            Session(
+                type=SessionType.RACE,
+                start_datetime=datetime(2025, 3, 16, 5, 0, tzinfo=TZ),
+                end_datetime=datetime(2025, 3, 16, 7, 0),  # naive
+                title="Race",
+            )
+
+    def test_end_before_start_raises(self) -> None:
+        with pytest.raises(ValidationError, match="strictly after"):
+            Session(
+                type=SessionType.QUALIFYING,
+                start_datetime=datetime(2025, 3, 16, 8, 0, tzinfo=TZ),
+                end_datetime=datetime(2025, 3, 16, 7, 0, tzinfo=TZ),  # before start
+                title="Qualifying",
+            )
+
+    def test_end_equal_start_raises(self) -> None:
+        with pytest.raises(ValidationError, match="strictly after"):
+            Session(
+                type=SessionType.FP1,
+                start_datetime=datetime(2025, 3, 14, 10, 0, tzinfo=TZ),
+                end_datetime=datetime(2025, 3, 14, 10, 0, tzinfo=TZ),  # equal
+                title="FP1",
+            )
+
+    def test_invalid_session_type_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            Session(
+                type="UNKNOWN_TYPE",  # type: ignore[arg-type]
+                start_datetime=datetime(2025, 3, 16, 5, 0, tzinfo=TZ),
+                end_datetime=datetime(2025, 3, 16, 7, 0, tzinfo=TZ),
+                title="Race",
+            )
+
+    def test_immutable(self, race_session: Session) -> None:
+        with pytest.raises(ValidationError):
+            race_session.title = "Changed"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Event
+# ---------------------------------------------------------------------------
+
+
+class TestEvent:
+    def test_creation(self, australian_gp: Event) -> None:
+        assert australian_gp.name == "Australian Grand Prix"
+        assert australian_gp.season == 2025
+        assert australian_gp.round == 1
+        assert len(australian_gp.sessions) == 2
+
+    def test_sessions_are_tuple(self, australian_gp: Event) -> None:
+        assert isinstance(australian_gp.sessions, tuple)
+
+    def test_nested_championship(self, australian_gp: Event, f1: Championship) -> None:
+        assert australian_gp.championship == f1
+        assert australian_gp.championship.category == ChampionshipCategory.SINGLE_SEATER
+
+    def test_nested_circuit(self, australian_gp: Event, albert_park: Circuit) -> None:
+        assert australian_gp.circuit == albert_park
+        assert australian_gp.circuit.timezone == "Australia/Melbourne"
+
+    def test_empty_sessions_by_default(self, f1: Championship, albert_park: Circuit) -> None:
+        event = Event(
+            championship=f1,
+            season=2025,
+            round=2,
+            name="Bahrain Grand Prix",
+            circuit=albert_park,
+        )
+        assert event.sessions == ()
+
+    def test_season_bounds(self, f1: Championship, albert_park: Circuit) -> None:
+        with pytest.raises(ValidationError):
+            Event(championship=f1, season=1900, round=1, name="X", circuit=albert_park)
+
+    def test_round_must_be_positive(self, f1: Championship, albert_park: Circuit) -> None:
+        with pytest.raises(ValidationError):
+            Event(championship=f1, season=2025, round=0, name="X", circuit=albert_park)
+
+    def test_immutable(self, australian_gp: Event) -> None:
+        with pytest.raises(ValidationError):
+            australian_gp.name = "Changed"  # type: ignore[misc]

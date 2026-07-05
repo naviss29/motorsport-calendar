@@ -1,17 +1,28 @@
 """Championship model."""
 
-from pydantic import BaseModel, Field
+from enum import StrEnum
 
-from .event import Event
+from pydantic import BaseModel, ConfigDict
+
+
+class ChampionshipCategory(StrEnum):
+    """Broad category of a motorsport championship."""
+
+    SINGLE_SEATER = "Single Seater"
+    ENDURANCE = "Endurance"
+    GT = "GT"
+    TOURING_CAR = "Touring Car"
+    RALLY = "Rally"
+    MOTORBIKE = "Motorbike"
+    OVAL = "Oval"
+    OTHER = "Other"
 
 
 class Championship(BaseModel):
-    """A motorsport championship season."""
+    """A motorsport championship (series), independent of any season."""
 
-    id: str = Field(description="Unique identifier (e.g. 'f1-2025')")
-    name: str = Field(description="Full championship name")
-    short_name: str | None = Field(default=None, description="Abbreviated name (e.g. 'F1')")
-    year: int = Field(description="Season year", ge=1950, le=2100)
-    sport: str = Field(description="Sport slug (e.g. 'formula1', 'motogp', 'wec')")
-    events: list[Event] = Field(default_factory=list, description="All sessions in this season")
-    url: str | None = Field(default=None, description="Official championship URL")
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str
+    category: ChampionshipCategory

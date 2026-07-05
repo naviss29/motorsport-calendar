@@ -1,7 +1,15 @@
-"""Pydantic models — data layer with no business logic."""
+"""Pydantic models — immutable data layer."""
 
-from .championship import Championship
+from .championship import Championship, ChampionshipCategory
 from .circuit import Circuit
-from .event import Event, SessionType
+from .event import Event
+from .session import Session, SessionType
 
-__all__ = ["Championship", "Circuit", "Event", "SessionType"]
+__all__ = [
+    "Championship",
+    "ChampionshipCategory",
+    "Circuit",
+    "Event",
+    "Session",
+    "SessionType",
+]
