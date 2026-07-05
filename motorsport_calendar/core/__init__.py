@@ -2,5 +2,12 @@
 
 from .registry import ProviderRegistry, registry
 from .service import CalendarService
+from .source_registry import SourceRegistry, source_registry
 
-__all__ = ["CalendarService", "ProviderRegistry", "registry"]
+__all__ = [
+    "CalendarService",
+    "ProviderRegistry",
+    "registry",
+    "SourceRegistry",
+    "source_registry",
+]

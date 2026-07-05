@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.1.0 (alpha)
-- **Phase** : Sprint 9 — ProviderRegistry terminé
-- **Tests** : 250 passants, 0 échouants — couverture 93 %
+- **Phase** : Sprint 10 — SourceRegistry terminé — architecture figée
+- **Tests** : 273 passants, 0 échouants — couverture 93 %
 - **Branche** : `master`
 
 ---
@@ -71,8 +71,9 @@ motorsport_calendar/
 │   └── service.py           # ✅ ConfigService — lit config.yaml, merge avec défauts Pydantic
 │
 ├── core/
-│   ├── __init__.py          # export ProviderRegistry + registry singleton
+│   ├── __init__.py          # export ProviderRegistry + registry + SourceRegistry + source_registry
 │   ├── registry.py          # ✅ ProviderRegistry — register/get/list_all/enabled/discover
+│   ├── source_registry.py   # ✅ SourceRegistry — register/get/list_for/list_all/discover
 │   └── service.py           # 🔴 NON IMPLÉMENTÉ — placeholder
 │
 ├── exporters/
@@ -97,6 +98,7 @@ motorsport_calendar/
 8. **ConfigService** — lit `config.yaml` (CWD puis `~/.config/…`), valeurs par défaut Pydantic, validation automatique
 9. **IcsExporter** — ajout VALARM configurable via `alarm_minutes` (0 = désactivé)
 10. **ProviderRegistry** — `register/get/list_all/enabled/discover`, auto-enregistrement à l'import de `__init__.py`
+11. **SourceRegistry** — `register/get/list_for/list_all/discover`, clé `(championship, source_name)`, auto-enregistrement dans `sources/__init__.py`
 
 ---
 
@@ -129,11 +131,16 @@ Tests cibles : `tests/test_ergast_source.py`
 - **Config** : `ConfigService(config_path=None)` — cherche `config.yaml` dans CWD puis `~/.config/motorsport-calendar/`. Aucun fichier → défauts complets.
 - **config.yaml** : ignoré par git (personnel). `config.example.yaml` commité comme référence.
 - **VALARM** : `IcsExporter(alarm_minutes=N)` — N>0 → `TRIGGER:-PTNm` dans chaque VEVENT. CLI lit `config.ics.alarm_minutes`.
-- **ProviderRegistry** : singleton `motorsport_calendar.core.registry.registry`. Providers s'enregistrent via leur `__init__.py`. CLI appelle `registry.discover()` puis `registry.get("formula1")` → factory `(cfg, cache, refresh) → Provider`.
-- **Auto-enregistrement** : importer n'importe quoi de `providers/formula1/` suffit à déclencher `formula1/__init__.py` → registration. `discover()` force l'import si rien n'a encore été importé (cold start CLI).
-- **ProviderConfig** : `enabled: bool = True` (opt-out), `source: str = ""` (optionnel — factory fallback vers sa valeur par défaut si vide).
-- **ProvidersConfig.get(id)** : cherche dans les champs nommés (`formula1`, `wec`) puis dans `model_extra` (providers YAML extra). Retourne `None` si absent (= activé par défaut dans `registry.enabled()`).
-- **Source selection** : factory du provider sélectionne la source depuis `cfg.source` — source inconnue → `ValueError` → CLI exit 1 avec message clair.
+- **Architecture figée (Sprint 10)** : ProviderRegistry + SourceRegistry = architecture finale. Pas de refactoring structurel prévu.
+- **ProviderRegistry** : singleton `motorsport_calendar.core.registry.registry`. Factory signature : `(source) → Provider`. `registry.discover()` importe chaque `providers/X/__init__.py`.
+- **SourceRegistry** : singleton `motorsport_calendar.core.source_registry.source_registry`. Clé `(championship_id, source_name)`. Factory signature : `(cache, refresh) → Source`. `source_registry.discover()` importe chaque `providers/X/sources/__init__.py`.
+- **Auto-enregistrement providers** : `providers/formula1/__init__.py` → `registry.register("formula1", _make_provider)`.
+- **Auto-enregistrement sources** : `providers/formula1/sources/__init__.py` → `source_registry.register("formula1", "openf1", lambda cache, refresh: OpenF1Source(...))`.
+- **CLI orchestration** : `source = source_registry.get(cid, source_name)(cache, refresh)` → `provider = registry.get(cid)(source)`.
+- **ProviderConfig** : `enabled: bool = True` (opt-out), `source: str = ""` (optionnel — `or "openf1"` dans la CLI).
+- **ProvidersConfig.get(id)** : cherche dans les champs nommés (`formula1`, `wec`) puis dans `model_extra`. Retourne `None` si absent (= activé par défaut dans `registry.enabled()`).
+- **Ajouter une source** : une ligne dans `sources/__init__.py`. Aucun autre fichier.
+- **Ajouter un championnat** : créer `providers/X/` + `providers/X/sources/`. Aucun autre fichier.
 
 ---
 

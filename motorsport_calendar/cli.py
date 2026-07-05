@@ -87,6 +87,7 @@ def generate_f1(
     from motorsport_calendar.cache import HttpCache
     from motorsport_calendar.config import ConfigService
     from motorsport_calendar.core.registry import registry
+    from motorsport_calendar.core.source_registry import source_registry
     from motorsport_calendar.exporters.ics import IcsExporter
 
     config = ConfigService()
@@ -98,8 +99,24 @@ def generate_f1(
             ttl=config.cache.ttl_seconds,
         )
 
-    # Découverte et sélection du provider via le registre — la CLI ne connaît pas les providers
+    # Découverte automatique — la CLI ne connaît ni les providers ni les sources
     registry.discover()
+    source_registry.discover()
+
+    provider_cfg = config.providers.get("formula1")
+    if provider_cfg is None:
+        from motorsport_calendar.config.models import ProviderConfig
+        provider_cfg = ProviderConfig(source="openf1")
+
+    source_name = provider_cfg.source or "openf1"
+
+    try:
+        make_source = source_registry.get("formula1", source_name)
+    except KeyError as exc:
+        err_console.print(str(exc))
+        raise typer.Exit(code=1)
+
+    source = make_source(cache, refresh)
 
     try:
         make_provider = registry.get("formula1")
@@ -107,25 +124,15 @@ def generate_f1(
         err_console.print(str(exc))
         raise typer.Exit(code=1)
 
-    provider_cfg = config.providers.get("formula1")
-    if provider_cfg is None:
-        from motorsport_calendar.config.models import ProviderConfig
-        provider_cfg = ProviderConfig(source="openf1")
-
-    try:
-        provider = make_provider(provider_cfg, cache, refresh)
-    except ValueError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
+    provider = make_provider(source)
 
     async def _fetch() -> list:
         return await provider.fetch_events("formula1", year)
 
-    source_label = provider_cfg.source or "openf1"
     cache_note = " [yellow](--refresh)[/]" if refresh else ""
     console.print(
         f"Fetching F1 [bold cyan]{year}[/] calendar "
-        f"via [green]{source_label}[/]…{cache_note}"
+        f"via [green]{source_name}[/]…{cache_note}"
     )
 
     try:

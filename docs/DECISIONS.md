@@ -152,6 +152,30 @@ Créer `motorsport_calendar/config/` avec :
 
 ---
 
+## ADR-012 — SourceRegistry : inversion de responsabilité source → registre
+
+**Contexte**
+Après le Sprint 9, la factory du provider connaissait ses sources (`if source == "openf1": ...`). Chaque nouvelle source (Ergast, Jolpica, Official) aurait ajouté un `elif`. Violation du principe ouvert/fermé.
+
+**Décision**
+Créer `motorsport_calendar/core/source_registry.py` avec un `SourceRegistry` singleton, symétrique au `ProviderRegistry`.
+Chaque `providers/X/sources/__init__.py` enregistre ses sources :
+```python
+source_registry.register("formula1", "openf1", lambda cache, refresh: OpenF1Source(...))
+```
+La factory provider devient triviale : `_make_provider(source) → Formula1Provider(source)`.
+La CLI orchestre : `source = source_registry.get("formula1", "openf1")(cache, refresh)`.
+
+**Conséquences**
+- Ajouter une source F1 (Ergast, Jolpica…) = une ligne dans `formula1/sources/__init__.py`. Zéro autre modification.
+- La factory provider ne connaît aucune source concrète.
+- `source_registry.discover()` importe `providers/X/sources/` de chaque championnat.
+- 24 tests unitaires + d'intégration couvrent le registre.
+
+**Note** : cette ADR marque la fin des refactorings structurels. L'architecture Provider/Source/Registry est désormais figée. Les prochains sprints ajoutent des fonctionnalités.
+
+---
+
 ## ADR-011 — ProviderRegistry : auto-enregistrement par import
 
 **Contexte**

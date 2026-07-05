@@ -2,6 +2,62 @@
 
 ---
 
+## Session 2026-07-05 — Sprint 10 : Source Registry
+
+### Objectif
+Inverser la responsabilité de la sélection de source. Le provider ne connaît plus ses sources. Le `SourceRegistry` gère la correspondance `(championnat, nom_source) → factory`.
+
+### Travail effectué
+
+**`motorsport_calendar/core/source_registry.py`** — nouveau fichier
+- `SourceRegistry` : `register()`, `get()`, `list_for()`, `list_all()`, `discover()`
+- Clé composite `(championship_id, source_name)`
+- `discover()` : importe `providers/X/sources/__init__.py` de chaque provider
+- `source_registry` singleton
+- Couverture 93 %
+
+**`motorsport_calendar/providers/formula1/sources/__init__.py`**
+- Ajout `source_registry.register("formula1", "openf1", lambda cache, refresh: OpenF1Source(...))`
+- Les stubs (Ergast, Official, Cached) ne sont pas encore enregistrés
+
+**`motorsport_calendar/providers/wec/sources/__init__.py`**
+- Ajout `source_registry.register("wec", "official", lambda cache, refresh: OfficialWecSource())`
+
+**`motorsport_calendar/providers/formula1/__init__.py`**
+- Factory simplifiée : `_make_provider(source) → Formula1Provider(source)`
+- Plus aucune référence à OpenF1Source, Ergast, etc.
+
+**`motorsport_calendar/providers/wec/__init__.py`**
+- Factory simplifiée : `_make_provider(source) → WecProvider(source)`
+
+**`motorsport_calendar/cli.py`**
+- `generate-f1` orchestre : `source_registry.get("formula1", source_name)(cache, refresh)` puis `registry.get("formula1")(source)`
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `motorsport_calendar/core/source_registry.py` | Créé |
+| `motorsport_calendar/core/__init__.py` | Modifié — export SourceRegistry + source_registry |
+| `motorsport_calendar/providers/formula1/__init__.py` | Modifié — factory simplifiée |
+| `motorsport_calendar/providers/wec/__init__.py` | Modifié — factory simplifiée |
+| `motorsport_calendar/providers/formula1/sources/__init__.py` | Modifié — enregistrement openf1 |
+| `motorsport_calendar/providers/wec/sources/__init__.py` | Modifié — enregistrement official |
+| `motorsport_calendar/cli.py` | Modifié — orchestration via source_registry |
+| `tests/test_source_registry.py` | Créé — 24 tests |
+| `tests/test_registry.py` | Modifié — factories mises à jour |
+| `docs/DECISIONS.md` | ADR-012 ajouté |
+
+### Bugs rencontrés
+Aucun.
+
+### Tests exécutés
+```
+273 passed — 0 failed — couverture 93 %
+```
+
+---
+
 ## Session 2026-07-05 — Sprint 9 : Provider Registry
 
 ### Objectif

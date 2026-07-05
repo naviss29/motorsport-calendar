@@ -117,3 +117,4 @@
 - [x] IcsExporter — VALARM configurable (alarm_minutes), 7 tests
 - [x] CLI generate-f1 — wiring ConfigService (cache path/TTL, source selection, alarm)
 - [x] ProviderRegistry — register/get/list_all/enabled/discover, auto-enregistrement à l'import, 25 tests
+- [x] SourceRegistry — register/get/list_for/list_all/discover, clé (championship, source), 24 tests
