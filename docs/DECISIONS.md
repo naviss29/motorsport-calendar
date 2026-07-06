@@ -284,6 +284,20 @@ Raisons du choix :
 - `F1CalendarSource` n'a pas de wrapper `_get_json` (pas de legacy mocks à maintenir).
 - 448 tests, 0 régression, couverture 93 %.
 
+**Mise à jour 2026-07-06 (Sprint 21.2)** :
+Audit Sprint 21.1 révèle un renommage de clés dans le dataset à partir de 2025 :
+- `"fp1"` → `"practice"`
+- `"sprintRace"` → `"sprint"`
+
+F3 utilisait déjà `"practice"` et `"sprint"` depuis 2022 — le dataset a donc aligné F2 sur F3.
+Conséquence : les calendriers F2 2025+ n'exportaient que 2 sessions sur 4 (qualifying + feature).
+
+Correction : `_SESSION_MAP` inclut désormais les deux formes pour chaque clé renommée.
+Les deux anciennes clés (`fp1`, `sprintRace`) sont conservées pour la rétrocompatibilité des
+saisons 2024 et antérieures. Si un event contient à la fois `fp1` et `practice` (impossible
+en pratique), les deux seraient exportés — un UID collision ICS en résulterait, mais cela
+ne se produit pas dans le dataset réel.
+
 ---
 
 ## ADR-016 — F1 Academy : mapping SessionType contraint par l'absence de RACE2/RACE3

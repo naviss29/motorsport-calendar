@@ -7,6 +7,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint 21.2
+
+### Fixed
+
+- **Formula 2 : rétrocompatibilité des clés de sessions** (hotfix — ADR-014 mis à jour).
+  Le dataset `sportstimes/f1` a renommé deux clés F2 à partir de 2025 :
+  `fp1` → `practice` et `sprintRace` → `sprint`.
+  Conséquence : les calendriers F2 2025+ n'exportaient que 2 sessions sur 4.
+  `_SESSION_MAP` accepte désormais les quatre formes ; les saisons 2024 et antérieures
+  continuent de fonctionner sans modification.
+  6 tests de régression ajoutés dans `test_cli_generate_f2.py` (`TestF2SessionKeyCompat`) :
+  3 tests unitaires `_build_event` et 3 tests CLI VEVENT pour 2024, 2025 et 2026.
+
+---
+
 ## [Unreleased] — Sprint 21
 
 ### Added

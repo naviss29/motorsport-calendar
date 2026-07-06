@@ -10,6 +10,10 @@ import pytest
 from typer.testing import CliRunner
 
 from motorsport_calendar.cli import app
+from motorsport_calendar.providers.formula2.sources.f1calendar import (
+    _build_event,
+    _make_championship,
+)
 
 runner = CliRunner()
 
@@ -28,6 +32,35 @@ _BAHRAIN_EVENT: dict[str, Any] = {
         "qualifying": "2024-03-01T12:10:00Z",
         "sprintRace": "2024-03-02T09:05:00Z",
         "feature": "2024-03-03T10:05:00Z",
+    },
+}
+
+# dataset ≥ 2025: "fp1" renamed to "practice", "sprintRace" renamed to "sprint"
+_BAHRAIN_EVENT_2025: dict[str, Any] = {
+    "name": "Bahrain Grand Prix",
+    "location": "Sakhir",
+    "round": 1,
+    "slug": "bahrain",
+    "localeKey": "bahrain",
+    "sessions": {
+        "practice":   "2025-04-17T11:05:00Z",
+        "qualifying": "2025-04-18T12:10:00Z",
+        "sprint":     "2025-04-19T09:05:00Z",
+        "feature":    "2025-04-20T10:05:00Z",
+    },
+}
+
+_BAHRAIN_EVENT_2026: dict[str, Any] = {
+    "name": "Bahrain Grand Prix",
+    "location": "Sakhir",
+    "round": 1,
+    "slug": "bahrain",
+    "localeKey": "bahrain",
+    "sessions": {
+        "practice":   "2026-04-16T11:05:00Z",
+        "qualifying": "2026-04-17T12:10:00Z",
+        "sprint":     "2026-04-18T09:05:00Z",
+        "feature":    "2026-04-19T10:05:00Z",
     },
 }
 
@@ -194,3 +227,45 @@ class TestGenerateF2IcsContent:
         _run_generate_f2(2024, output)
         content = output.read_text()
         assert "Qualifying" in content
+
+
+# ---------------------------------------------------------------------------
+# TestF2SessionKeyCompat — Sprint 21.2 regression tests
+# Verifies that both old (≤ 2024) and new (≥ 2025) dataset key names produce
+# all 4 sessions. Root cause: dataset renamed "fp1"→"practice" and
+# "sprintRace"→"sprint" starting in 2025 (see ADR-014 update).
+# ---------------------------------------------------------------------------
+
+
+class TestF2SessionKeyCompat:
+    def test_2024_keys_produce_4_sessions(self) -> None:
+        championship = _make_championship(2024)
+        event = _build_event(championship, _BAHRAIN_EVENT, 2024)
+        assert len(event.sessions) == 4
+
+    def test_2025_keys_produce_4_sessions(self) -> None:
+        championship = _make_championship(2025)
+        event = _build_event(championship, _BAHRAIN_EVENT_2025, 2025)
+        assert len(event.sessions) == 4
+
+    def test_2026_keys_produce_4_sessions(self) -> None:
+        championship = _make_championship(2026)
+        event = _build_event(championship, _BAHRAIN_EVENT_2026, 2026)
+        assert len(event.sessions) == 4
+
+    def test_2025_cli_produces_4_vevents(self, tmp_path: Path) -> None:
+        output = tmp_path / "f2-2025.ics"
+        payload = {"name": "Formula 2", "events": [_BAHRAIN_EVENT_2025]}
+        _run_generate_f2(2025, output, payload)
+        assert output.read_text().count("BEGIN:VEVENT") == 4
+
+    def test_2026_cli_produces_4_vevents(self, tmp_path: Path) -> None:
+        output = tmp_path / "f2-2026.ics"
+        payload = {"name": "Formula 2", "events": [_BAHRAIN_EVENT_2026]}
+        _run_generate_f2(2026, output, payload)
+        assert output.read_text().count("BEGIN:VEVENT") == 4
+
+    def test_2024_cli_still_produces_4_vevents(self, tmp_path: Path) -> None:
+        output = tmp_path / "f2-2024.ics"
+        _run_generate_f2(2024, output)
+        assert output.read_text().count("BEGIN:VEVENT") == 4

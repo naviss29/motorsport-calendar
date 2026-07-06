@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 > Fichier de reprise rapide pour une IA. Mis à jour après chaque session.
-> Dernière mise à jour : 2026-07-05
+> Dernière mise à jour : 2026-07-06
 
 ---
 
@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.2.0 (alpha)
-- **Phase** : Sprint 21 — F1 Academy (generate-f1-academy, 3 races/weekend, mapping FP3 workaround)
-- **Tests** : ~602 passants, 0 échouants — couverture ~94 %
+- **Phase** : Sprint 21.2 — F2 session key hotfix (`fp1`→`practice`, `sprintRace`→`sprint` depuis 2025)
+- **Tests** : ~611 passants, 0 échouants — couverture ~94 %
 - **Branche** : `master`
 
 ---
@@ -169,7 +169,7 @@ motorsport_calendar/
 - **config.yaml** : ignoré par git (personnel). `config.example.yaml` commité comme référence.
 - **VALARM** : `IcsExporter(alarm_minutes=N)` — N>0 → `TRIGGER:-PTNm` dans chaque VEVENT. CLI lit `config.ics.alarm_minutes`.
 - **Data Acquisition Layer (DAL)** : `core/datasource/` — `DataSource` (ABC marker), `JsonDataSource` (abstract `fetch_json(url, params)`), `HtmlDataSource` (abstract `fetch_html(url)`), `IcsDataSource` (abstract `fetch_ics(url)`). Les sources implémentent l'interface DAL de leur catégorie **en plus** de l'interface domaine (`Formula1Source`, etc.). `OpenF1Source` et `F1CalendarSource` implémentent `JsonDataSource`.
-- **F1CalendarSource (F2)** : config F2 uniquement — `_series_key="f2"`, sessions : `fp1/qualifying/sprintRace/feature`. `_CIRCUIT_DATA` : 23 circuits. Module-level backward-compat functions conservées (importées directement par `test_f1calendar_source.py`).
+- **F1CalendarSource (F2)** : config F2 uniquement — `_series_key="f2"`. `_SESSION_MAP` accepte 6 clés : `fp1` et `practice` → `FP1` (renommage dataset 2025), `qualifying`, `sprintRace` et `sprint` → `SPRINT` (renommage dataset 2025), `feature` → `RACE`. `_CIRCUIT_DATA` : 23 circuits. Module-level backward-compat functions conservées (importées directement par `test_f1calendar_source.py`).
 - **F1CalendarSource (F3)** : config F3 uniquement — `_series_key="f3"`, sessions : `practice/qualifying/sprint/feature` (clés différentes de F2). `_CIRCUIT_DATA` : 13 circuits (subset F1 européen + Bahreïn + Melbourne). Pas de fonctions module-level (F3 n'a pas de tests hérités). URL construite par la base : `_BASE_URL/{series_key}/{year}.json`. `event_uid = f"f1calendar-{series_key}-{year}-{round}@motorsport-calendar"`.
 - **F1CalendarSource (F1 Academy)** : config F1A uniquement — `_series_key="f1-academy"`, sessions : `fp1/fp2/qualifying1/qualifying2/race1/race2/race3`. `_CIRCUIT_DATA` : 15 circuits (2023-2025). Mapping contraint : `race2 → FP3` workaround ADR-016. Package Python : `f1_academy` (underscore), championship ID : `"f1-academy"` (tiret). `qualifying2` optionnel (absent en 2025+).
 - **test_cli_generate.py — imports disambiguïsés** : F1Academy importée comme `F1AcademyCalendarSource`, mockée dans `test_all_providers_fail_*`.

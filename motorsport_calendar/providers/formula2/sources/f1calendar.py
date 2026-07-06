@@ -26,11 +26,15 @@ from motorsport_calendar.providers.support_series.f1calendar_base import (
 __all__ = ["F1CalendarSource"]
 
 # F2-specific: session key → (SessionType, duration minutes, display title)
+# The dataset renamed two keys starting in 2025: "fp1" → "practice", "sprintRace" → "sprint".
+# Both forms are kept here to support all seasons without breaking historical exports.
 _SESSION_MAP: dict[str, tuple[SessionType, int, str]] = {
-    "fp1": (SessionType.FP1, 45, "Free Practice"),
+    "fp1":        (SessionType.FP1,        45, "Free Practice"),  # dataset ≤ 2024
+    "practice":   (SessionType.FP1,        45, "Free Practice"),  # dataset ≥ 2025
     "qualifying": (SessionType.QUALIFYING, 30, "Qualifying"),
-    "sprintRace": (SessionType.SPRINT, 45, "Sprint Race"),
-    "feature": (SessionType.RACE, 65, "Feature Race"),
+    "sprintRace": (SessionType.SPRINT,     45, "Sprint Race"),    # dataset ≤ 2024
+    "sprint":     (SessionType.SPRINT,     45, "Sprint Race"),    # dataset ≥ 2025
+    "feature":    (SessionType.RACE,       65, "Feature Race"),
 }
 
 # F2 circuit slug (f1calendar localeKey) → (country, IANA timezone)
