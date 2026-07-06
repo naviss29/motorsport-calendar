@@ -73,7 +73,7 @@ async def build_main_view(page: ft.Page) -> None:
     )
 
     file_picker = ft.FilePicker()
-    page.overlay.append(file_picker)
+    page.services.append(file_picker)
 
     async def on_browse_click(e: ft.ControlEvent) -> None:
         result = await file_picker.save_file(

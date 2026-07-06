@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Hotfix GUI-02 — FilePicker / page.services
+
+### Fixed
+
+- **`FilePicker` enregistré dans `page.services` et non `page.overlay`** : dans Flet 0.85,
+  `FilePicker` hérite de `Service` (et non de `Control`). Le placer dans `page.overlay`
+  causait l'erreur `Unknown control: FilePicker` à l'affichage. Correction :
+  `page.services.append(file_picker)`.
+- Parcours complet validé : fenêtre ouverte sans bande rouge, `generate_calendar()` crée un
+  fichier `.ics` valide (F2 2025 — 14 événements, 15 707 octets).
+
+---
+
 ## [Unreleased] — Hotfix GUI-01 — Compatibilité Flet 0.85
 
 ### Fixed
