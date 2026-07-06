@@ -45,6 +45,29 @@ class Strings:
     summary_ok: str = "✓ {name} — {n} événement{s}"
     summary_error: str = "✗ {name} : {err}"
 
+    # Navigation rail
+    nav_home: str = "Accueil"
+    nav_calendar: str = "Calendrier"
+    nav_about: str = "À propos"
+
+    # Home screen
+    home_title: str = "Bienvenue"
+    home_body: str = (
+        "Créez votre calendrier de courses automobiles personnalisé "
+        "et importez-le dans Google Calendar, Apple Calendar ou Outlook."
+    )
+    home_cta: str = "Créer mon calendrier"
+
+    # About screen
+    about_version: str = "Version Alpha"
+    about_developer: str = "Développé par BApps"
+    about_github_label: str = "Voir sur GitHub"
+    about_license: str = "Licence MIT"
+    about_description: str = (
+        "Motorsport Calendar agrège les calendriers de saison de plusieurs "
+        "championnats automobiles et les exporte au format ICS standard."
+    )
+
     @classmethod
     def from_dict(cls, data: dict) -> "Strings":
         """Build a Strings instance from a dict (future i18n use).

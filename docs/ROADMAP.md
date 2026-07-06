@@ -98,7 +98,22 @@
 
 ---
 
-## v0.4.0 — Desktop Edition Phase 2 (Sprint 24)
+## v0.3.2 — Desktop Alpha 3 — Product Polish ✅ Sprint 24 (2026-07-06)
+
+| Fonctionnalité | Statut |
+|---|---|
+| Navigation multi-pages : Accueil / Calendrier / À propos | ✅ |
+| `ft.NavigationRail` 3 destinations, responsive (étendu >900px) | ✅ |
+| Championnats groupés visuellement : 🏎 Formula / 🏁 Endurance | ✅ |
+| Architecture catégories extensible (`categories.py`) : FORMULA, ENDURANCE, MOTO, RALLY, AMERICA | ✅ |
+| Écran Accueil : icône, description, CTA vers Calendrier | ✅ |
+| Écran À propos : version, développeur BApps, GitHub, Licence MIT | ✅ |
+| `strings.py` étendu (nav + about) | ✅ |
+| 25 nouveaux tests (`test_gui_categories.py`) — 720 total | ✅ |
+
+---
+
+## v0.4.0 — Desktop Edition Phase 2 (Sprint 25)
 
 | Fonctionnalité | Priorité |
 |---|---|

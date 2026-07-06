@@ -7,6 +7,42 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint 24 — Desktop Alpha 3 — Product Polish
+
+### Added
+
+- **`motorsport_calendar/gui/categories.py`** — modèle de données pour les groupes visuels
+  de championnats. `Category` (StrEnum : FORMULA, ENDURANCE, MOTO, RALLY, AMERICA),
+  `ChampionshipGroup` (dataclass frozen), `GROUPS` (registre ordonné), `get_groups_for()`
+  (retourne les groupes filtrés sur les IDs disponibles, IDs inconnus dans un groupe "Autres").
+  Architecture extensible : ajouter un groupe = 1 entrée dans `GROUPS`.
+- **Navigation interne** : `ft.NavigationRail` avec 3 destinations (Accueil, Calendrier,
+  À propos). Contenu switché sans reconstruction des vues.
+- **Écran Accueil** : icône, titre, sous-titre, description, bouton CTA vers le Calendrier.
+- **Écran À propos** : Motorsport Calendar, Version Alpha, développeur BApps, lien GitHub
+  (via `ft.UrlLauncher`), Licence MIT.
+- **`strings.py`** : 8 nouvelles chaînes — `nav_home`, `nav_calendar`, `nav_about`,
+  `home_title`, `home_body`, `home_cta`, `about_version`, `about_developer`,
+  `about_github_label`, `about_license`, `about_description`.
+- **25 nouveaux tests** : `test_gui_categories.py`.
+
+### Changed
+
+- **Championnats groupés visuellement** : dans l'écran Calendrier, les cases à cocher sont
+  regroupées sous des en-têtes `🏎 Formula` et `🏁 Endurance` (avec séparateur entre groupes).
+- **Rail responsive** : `nav_rail.extended = True` quand `page.width > 900` (géré via
+  `page.on_resize`). Labels toujours visibles en mode compact (`label_type=ALL`).
+- **Fenêtre** : `width=700`, `min_width=560` (rail + contenu), `height=720`.
+- **Layout** : `ft.Row([nav_rail, VerticalDivider, content_area])` au lieu d'une `Column`
+  unique. `page.padding = 0` (padding géré par chaque vue).
+- **`UrlLauncher`** et `FilePicker` inscrits dans `page.services` (tous deux Services Flet).
+
+### Tests
+
+- 25 nouveaux tests : `test_gui_categories.py`. Total : **720 tests**.
+
+---
+
 ## [Unreleased] — Sprint 23 — Desktop Alpha 2 — UX Polish
 
 ### Added

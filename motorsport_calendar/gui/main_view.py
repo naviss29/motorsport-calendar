@@ -5,8 +5,10 @@ Requires flet>=0.80:  pip install motorsport-calendar[gui]
 Design rules:
 - All user-visible text comes from strings.py (STRINGS singleton).
 - Championship labels come from display_names.py (get_display_name).
+- Championship groups come from categories.py (get_groups_for).
 - User preferences (selected championships, last output dir) are persisted via preferences.py.
 - All business logic stays in controller.py — this file contains only presentation.
+- Views are built once at startup and swapped via NavigationRail without rebuilding.
 """
 
 from __future__ import annotations
@@ -18,11 +20,15 @@ from pathlib import Path
 
 import flet as ft
 
+from motorsport_calendar.gui.categories import get_groups_for
 from motorsport_calendar.gui.controller import generate_calendar, list_championships
 from motorsport_calendar.gui.display_names import DEFAULT_SELECTED, get_display_name
 from motorsport_calendar.gui.models import GenerateState
 from motorsport_calendar.gui.preferences import load_preferences, save_preferences
 from motorsport_calendar.gui.strings import STRINGS, plural
+
+# Public GitHub URL for the About screen
+_GITHUB_URL = "https://github.com/naviss29/motorsport-calendar"
 
 
 def _open_folder(path: str) -> None:
@@ -40,17 +46,22 @@ def _open_folder(path: str) -> None:
 
 
 async def build_main_view(page: ft.Page) -> None:  # noqa: C901
-    """Build and attach the main view to the Flet page."""
+    """Build and attach the navigation shell + all views to the Flet page."""
     page.title = STRINGS.app_title
     page.theme_mode = ft.ThemeMode.DARK
-    page.padding = 24
-    page.scroll = ft.ScrollMode.AUTO
-    page.window.min_width = 520
+    page.padding = 0
+    page.scroll = ft.ScrollMode.DISABLED
+    page.window.min_width = 560
     page.window.min_height = 580
-    page.window.width = 560
-    page.window.height = 700
+    page.window.width = 700
+    page.window.height = 720
 
-    # --- Preferences ---
+    # --- Services ---
+    file_picker = ft.FilePicker()
+    url_launcher = ft.UrlLauncher()
+    page.services.extend([file_picker, url_launcher])
+
+    # --- Preferences + State ---
     prefs = load_preferences()
 
     def _save_prefs() -> None:
@@ -59,7 +70,6 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
             "last_output_dir": prefs.get("last_output_dir", ""),
         })
 
-    # --- State ---
     state = GenerateState(
         year=date.today().year,
         selected_championships=list(
@@ -67,7 +77,11 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
         ),
     )
 
-    # --- Year selector ---
+    # =========================================================================
+    # SHARED CONTROLS (used across multiple views)
+    # =========================================================================
+
+    # --- Year selector (calendar view) ---
     current_year = date.today().year
     year_options = [
         ft.dropdown.Option(str(y))
@@ -76,7 +90,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
 
     def on_year_change(e: ft.ControlEvent) -> None:
         state.year = int(e.control.value)
-        _refresh_button()
+        _refresh_generate_btn()
 
     year_dropdown = ft.Dropdown(
         label=STRINGS.season_label,
@@ -86,7 +100,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
         on_select=on_year_change,
     )
 
-    # --- Championship checkboxes ---
+    # --- Championship checkboxes (calendar view) ---
     championships = list_championships()
     checkboxes: dict[str, ft.Checkbox] = {}
 
@@ -97,8 +111,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
             elif not e.control.value and cid in state.selected_championships:
                 state.selected_championships.remove(cid)
             _save_prefs()
-            _refresh_button()
-
+            _refresh_generate_btn()
         return handler
 
     for cid in championships:
@@ -108,7 +121,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
             on_change=_make_on_change(cid),
         )
 
-    # --- Output path ---
+    # --- Output path (calendar view) ---
     output_field = ft.TextField(
         label=STRINGS.output_label,
         hint_text=STRINGS.output_hint,
@@ -116,9 +129,6 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
         expand=True,
         dense=True,
     )
-
-    file_picker = ft.FilePicker()
-    page.services.append(file_picker)
 
     async def on_browse_click(e: ft.ControlEvent) -> None:
         last_dir = prefs.get("last_output_dir") or None
@@ -134,7 +144,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
             output_field.value = path
             prefs["last_output_dir"] = str(Path(path).parent)
             _save_prefs()
-            _refresh_button()
+            _refresh_generate_btn()
             page.update()
 
     browse_btn = ft.IconButton(
@@ -143,29 +153,26 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
         on_click=on_browse_click,
     )
 
-    # --- Progress ring ---
+    # --- Generate button & progress (calendar view) ---
     progress_ring = ft.ProgressRing(width=22, height=22, visible=False)
+    error_text = ft.Text(value="", size=13, color=ft.Colors.RED_400, selectable=True)
 
-    # --- Generate button ---
     generate_btn = ft.Button(
         content=STRINGS.generate_btn,
         icon=ft.Icons.CALENDAR_MONTH,
         disabled=True,
-        on_click=None,  # assigned below
+        on_click=None,
         style=ft.ButtonStyle(
             bgcolor=ft.Colors.GREEN_700,
             color=ft.Colors.WHITE,
         ),
     )
 
-    # --- Error text (shown only on failure) ---
-    error_text = ft.Text(value="", size=13, color=ft.Colors.RED_400, selectable=True)
-
-    def _refresh_button() -> None:
+    def _refresh_generate_btn() -> None:
         generate_btn.disabled = not state.is_ready()
         page.update()
 
-    # --- Success dialog ---
+    # --- Success dialog (calendar view) ---
     def _show_success_dialog(
         total_events: int,
         total_sessions: int,
@@ -198,23 +205,10 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                             weight=ft.FontWeight.W_500,
                         ),
                         ft.Divider(height=8),
-                        ft.Text(
-                            STRINGS.success_saved_at,
-                            size=12,
-                            color=ft.Colors.WHITE70,
-                        ),
-                        ft.Text(
-                            output_path,
-                            size=11,
-                            selectable=True,
-                            color=ft.Colors.WHITE54,
-                        ),
+                        ft.Text(STRINGS.success_saved_at, size=12, color=ft.Colors.WHITE70),
+                        ft.Text(output_path, size=11, selectable=True, color=ft.Colors.WHITE54),
                         ft.Divider(height=8),
-                        ft.Text(
-                            "\n".join(details),
-                            size=12,
-                            color=ft.Colors.WHITE70,
-                        ),
+                        ft.Text("\n".join(details), size=12, color=ft.Colors.WHITE70),
                     ],
                     spacing=4,
                 ),
@@ -226,10 +220,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=on_open_folder,
                 ),
-                ft.Button(
-                    content=STRINGS.close_btn,
-                    on_click=on_close,
-                ),
+                ft.Button(content=STRINGS.close_btn, on_click=on_close),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -271,9 +262,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                     )
                     has_success = True
                 else:
-                    details.append(
-                        STRINGS.summary_error.format(name=name, err=val)
-                    )
+                    details.append(STRINGS.summary_error.format(name=name, err=val))
 
             error_text.value = ""
             page.update()
@@ -295,73 +284,286 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
 
     generate_btn.on_click = on_generate_click
 
-    # --- Layout ---
-    page.add(
-        ft.Column(
-            controls=[
-                # Header
-                # Icon placeholder — replace ft.Icon with ft.Image when the app logo is ready:
-                #   ft.Image(src="icon.png", width=32, height=32)
-                # Place the PNG in motorsport_calendar/gui/assets/ and pass
-                #   assets_dir="motorsport_calendar/gui/assets" to ft.run() in app.py
-                ft.Row(
-                    [
-                        ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=30, color=ft.Colors.RED_400),
-                        ft.Column(
-                            [
-                                ft.Text(
-                                    STRINGS.app_title,
-                                    size=22,
-                                    weight=ft.FontWeight.BOLD,
-                                ),
-                                ft.Text(
-                                    STRINGS.app_subtitle,
-                                    size=12,
-                                    color=ft.Colors.WHITE54,
-                                ),
-                            ],
-                            spacing=0,
+    # =========================================================================
+    # VIEW BUILDERS
+    # =========================================================================
+
+    def _build_home_view(on_cta_click) -> ft.Control:
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Row(
+                        [ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=56, color=ft.Colors.RED_400)],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                    ft.Text(
+                        STRINGS.home_title,
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        STRINGS.app_subtitle,
+                        size=14,
+                        color=ft.Colors.WHITE54,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Container(height=16),
+                    ft.Container(
+                        content=ft.Text(
+                            STRINGS.home_body,
+                            size=14,
+                            color=ft.Colors.WHITE70,
+                            text_align=ft.TextAlign.CENTER,
                         ),
-                    ],
-                    spacing=12,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                ft.Divider(height=20),
+                        max_width=480,
+                        alignment=ft.alignment.center,
+                    ),
+                    ft.Container(height=24),
+                    ft.Row(
+                        [
+                            ft.Button(
+                                content=STRINGS.home_cta,
+                                icon=ft.Icons.CALENDAR_MONTH,
+                                on_click=on_cta_click,
+                                style=ft.ButtonStyle(
+                                    bgcolor=ft.Colors.RED_700,
+                                    color=ft.Colors.WHITE,
+                                ),
+                            )
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=8,
+            ),
+            expand=True,
+            padding=ft.padding.all(32),
+            alignment=ft.alignment.top_center,
+        )
 
-                # Season
-                ft.Text(STRINGS.season_label, size=14, weight=ft.FontWeight.W_500),
-                year_dropdown,
-                ft.Divider(height=12),
+    def _build_championship_groups() -> list[ft.Control]:
+        """Return grouped checkbox rows with visual section headers."""
+        groups = get_groups_for(championships)
+        controls: list[ft.Control] = []
+        for i, (group, ids) in enumerate(groups):
+            if i > 0:
+                controls.append(ft.Divider(height=8))
+            controls.append(
+                ft.Text(
+                    f"{group.emoji}  {group.label}",
+                    size=12,
+                    weight=ft.FontWeight.W_600,
+                    color=ft.Colors.WHITE60,
+                )
+            )
+            for cid in ids:
+                controls.append(checkboxes[cid])
+        return controls
 
-                # Championships
-                ft.Text(STRINGS.championships_label, size=14, weight=ft.FontWeight.W_500),
-                ft.Column(
-                    controls=[checkboxes[cid] for cid in championships],
-                    spacing=2,
-                ),
-                ft.Divider(height=12),
+    def _build_calendar_view() -> ft.Control:
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    # Header
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=24, color=ft.Colors.RED_400),
+                            ft.Text(
+                                STRINGS.app_title,
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                        ],
+                        spacing=10,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    ft.Divider(height=16),
 
-                # Output file
-                ft.Text(STRINGS.output_label, size=14, weight=ft.FontWeight.W_500),
-                ft.Row(
-                    [output_field, browse_btn],
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                ft.Divider(height=20),
+                    # Saison
+                    ft.Text(STRINGS.season_label, size=13, weight=ft.FontWeight.W_500),
+                    year_dropdown,
+                    ft.Divider(height=10),
 
-                # Action row
-                ft.Row(
-                    [generate_btn, progress_ring],
-                    alignment=ft.MainAxisAlignment.START,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=14,
-                ),
-                ft.Divider(height=8),
+                    # Championnats (groupés)
+                    ft.Text(STRINGS.championships_label, size=13, weight=ft.FontWeight.W_500),
+                    ft.Column(
+                        controls=_build_championship_groups(),
+                        spacing=2,
+                    ),
+                    ft.Divider(height=10),
 
-                # Error / status text
-                error_text,
+                    # Fichier de sortie
+                    ft.Text(STRINGS.output_label, size=13, weight=ft.FontWeight.W_500),
+                    ft.Row(
+                        [output_field, browse_btn],
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    ft.Divider(height=16),
+
+                    # Action
+                    ft.Row(
+                        [generate_btn, progress_ring],
+                        alignment=ft.MainAxisAlignment.START,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=14,
+                    ),
+                    ft.Divider(height=6),
+                    error_text,
+                ],
+                spacing=8,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            expand=True,
+            padding=ft.padding.symmetric(vertical=24, horizontal=28),
+        )
+
+    def _build_about_view() -> ft.Control:
+        async def on_github_click(e: ft.ControlEvent) -> None:
+            try:
+                await url_launcher.launch_url(_GITHUB_URL)
+            except Exception:  # noqa: BLE001
+                # Fallback for environments where UrlLauncher may not work
+                if sys.platform == "win32":
+                    subprocess.Popen(["start", "", _GITHUB_URL], shell=True)  # noqa: S603,S607
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Row(
+                        [ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=48, color=ft.Colors.RED_400)],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                    ft.Text(
+                        STRINGS.app_title,
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        STRINGS.about_version,
+                        size=13,
+                        color=ft.Colors.WHITE54,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Container(height=16),
+                    ft.Divider(),
+                    ft.Container(height=8),
+                    ft.Text(
+                        STRINGS.about_description,
+                        size=13,
+                        color=ft.Colors.WHITE70,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Container(height=16),
+                    ft.Text(
+                        STRINGS.about_developer,
+                        size=14,
+                        weight=ft.FontWeight.W_500,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Row(
+                        [
+                            ft.TextButton(
+                                content=ft.Row(
+                                    [
+                                        ft.Icon(ft.Icons.OPEN_IN_NEW, size=14),
+                                        ft.Text(STRINGS.about_github_label, size=13),
+                                    ],
+                                    spacing=4,
+                                    tight=True,
+                                ),
+                                on_click=on_github_click,
+                            )
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                    ft.Container(height=8),
+                    ft.Text(
+                        STRINGS.about_license,
+                        size=12,
+                        color=ft.Colors.WHITE38,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=6,
+            ),
+            expand=True,
+            padding=ft.padding.all(32),
+            alignment=ft.alignment.top_center,
+        )
+
+    # =========================================================================
+    # NAVIGATION SHELL
+    # =========================================================================
+
+    views: list[ft.Control] = []  # populated after builds below
+
+    def on_nav_change(e: ft.ControlEvent) -> None:
+        idx = int(e.control.selected_index)
+        content_area.content = views[idx]
+        page.update()
+
+    nav_rail = ft.NavigationRail(
+        selected_index=1,
+        label_type=ft.NavigationRailLabelType.ALL,
+        min_width=72,
+        extended=page.width > 900 if page.width else False,
+        destinations=[
+            ft.NavigationRailDestination(
+                icon=ft.Icons.HOME_OUTLINED,
+                selected_icon=ft.Icons.HOME,
+                label=STRINGS.nav_home,
+            ),
+            ft.NavigationRailDestination(
+                icon=ft.Icons.CALENDAR_MONTH_OUTLINED,
+                selected_icon=ft.Icons.CALENDAR_MONTH,
+                label=STRINGS.nav_calendar,
+            ),
+            ft.NavigationRailDestination(
+                icon=ft.Icons.INFO_OUTLINED,
+                selected_icon=ft.Icons.INFO,
+                label=STRINGS.nav_about,
+            ),
+        ],
+        on_change=on_nav_change,
+    )
+
+    def on_page_resize(e) -> None:
+        extended = page.width > 900
+        if nav_rail.extended != extended:
+            nav_rail.extended = extended
+            page.update()
+
+    page.on_resize = on_page_resize
+
+    # Build views after nav_rail exists (on_cta_click needs nav_rail)
+    def on_home_cta_click(e: ft.ControlEvent) -> None:
+        nav_rail.selected_index = 1
+        content_area.content = views[1]
+        page.update()
+
+    home_view = _build_home_view(on_home_cta_click)
+    calendar_view = _build_calendar_view()
+    about_view = _build_about_view()
+
+    views.extend([home_view, calendar_view, about_view])
+
+    content_area = ft.Container(
+        content=views[1],  # start on Calendar
+        expand=True,
+    )
+
+    page.add(
+        ft.Row(
+            controls=[
+                nav_rail,
+                ft.VerticalDivider(width=1),
+                content_area,
             ],
-            spacing=8,
-            width=480,
+            expand=True,
+            vertical_alignment=ft.CrossAxisAlignment.START,
         )
     )
