@@ -7,6 +7,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Hotfix GUI-01 — Compatibilité Flet 0.85
+
+### Fixed
+
+- **`ft.Dropdown.on_change` → `on_select`** : l'argument `on_change` a été supprimé dans
+  Flet 0.80+ au profit de `on_select` pour les menus déroulants. Le sélecteur de saison
+  levait `TypeError: Dropdown.__init__() got an unexpected keyword argument 'on_change'`
+  au lancement.
+- **`ft.Button(text=...)` → `content=`** : dans Flet 0.80+, `ft.Button` (et tous les boutons)
+  n'acceptent plus `text` mais `content: str | Control`. Le texte du bouton "Générer"
+  n'était pas affiché et causait un `TypeError` au démarrage.
+- La GUI s'ouvre désormais correctement sous Flet 0.85.3.
+
+---
+
 ## [Unreleased] — Sprint 22 — Desktop Edition (Phase 1)
 
 ### Added

@@ -39,7 +39,7 @@ async def build_main_view(page: ft.Page) -> None:
         value=str(current_year),
         options=year_options,
         width=180,
-        on_change=on_year_change,
+        on_select=on_year_change,
     )
 
     # --- Championship checkboxes ---
@@ -105,7 +105,7 @@ async def build_main_view(page: ft.Page) -> None:
 
     # --- Generate button ---
     generate_btn = ft.Button(
-        text="Générer",
+        content="Générer",
         icon=ft.Icons.CALENDAR_MONTH,
         disabled=True,
         on_click=None,  # assigned below
