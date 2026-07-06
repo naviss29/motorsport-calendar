@@ -50,7 +50,6 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
     page.title = STRINGS.app_title
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
-    page.scroll = ft.ScrollMode.DISABLED
     page.window.min_width = 560
     page.window.min_height = 580
     page.window.width = 700
@@ -316,8 +315,8 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                             color=ft.Colors.WHITE70,
                             text_align=ft.TextAlign.CENTER,
                         ),
-                        max_width=480,
-                        alignment=ft.alignment.center,
+                        width=480,
+                        alignment=ft.Alignment.CENTER,
                     ),
                     ft.Container(height=24),
                     ft.Row(
@@ -339,8 +338,8 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                 spacing=8,
             ),
             expand=True,
-            padding=ft.padding.all(32),
-            alignment=ft.alignment.top_center,
+            padding=ft.Padding.all(32),
+            alignment=ft.Alignment.TOP_CENTER,
         )
 
     def _build_championship_groups() -> list[ft.Control]:
@@ -416,7 +415,7 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                 scroll=ft.ScrollMode.AUTO,
             ),
             expand=True,
-            padding=ft.padding.symmetric(vertical=24, horizontal=28),
+            padding=ft.Padding.symmetric(vertical=24, horizontal=28),
         )
 
     def _build_about_view() -> ft.Control:
@@ -491,8 +490,8 @@ async def build_main_view(page: ft.Page) -> None:  # noqa: C901
                 spacing=6,
             ),
             expand=True,
-            padding=ft.padding.all(32),
-            alignment=ft.alignment.top_center,
+            padding=ft.Padding.all(32),
+            alignment=ft.Alignment.TOP_CENTER,
         )
 
     # =========================================================================
