@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.2.0 (alpha)
-- **Phase** : Sprint 22 — Desktop Edition Phase 1 (GUI Flet)
-- **Tests** : 659 passants, 0 échouants — couverture ~93 %
+- **Phase** : Sprint 23 — Desktop Alpha 2 — UX Polish
+- **Tests** : 695 passants, 0 échouants — couverture ~93 %
 - **Branche** : `master`
 
 ---
@@ -141,6 +141,7 @@ motorsport_calendar/
 19. **F1AcademyProvider + F1CalendarSource** — support complet F1 Academy via JSON MIT. Slug dataset : `f1-academy`. Sessions : fp1/fp2/qualifying1/[qualifying2]/race1/race2/race3. 15 circuits IANA (2023-2025). CLI `generate-f1-academy YEAR OUTPUT.ics`. Couverture 2023+. Mapping contraint (ADR-016) : race2 → FP3 pour éviter collision d'UIDs ICS sans modifier les modèles métier.
 20. **Dataset Reality Check (QA-03)** — Bug critique corrigé : `F1CalendarBaseSource` utilisait `raw.get("events", [])` alors que le dataset `sportstimes/f1` utilise `"races"`. F2/F3/F1 Academy retournaient 0 événements en production depuis Sprint 14. Correction : `raw.get("races", [])`. Fixtures de tests corrigées (`"events"` → `"races"` dans 5 fichiers). Fixtures réelles ajoutées dans `tests/fixtures/real/` (F2, F3, F1A — 2 événements chacun). 16 nouveaux tests (3 dans `TestRacesKeyRegression` + 13 dans `test_real_fixtures.py`).
 21. **GUI Desktop Phase 1 (Sprint 22 + Hotfix GUI-01 + GUI-02)** — Package `motorsport_calendar/gui/` : `models.py` (GenerateState), `controller.py` (list_championships + async generate_calendar), `main_view.py` (Flet UI), `app.py` (ft.run), `__main__.py`. Dépendance optionnelle `flet>=0.80`. Entrée script `motocal-gui`. 32 tests GUI (12 models + 20 controller, sans Flet). Flet 0.85 : `ft.run()`, `ft.Button(content=str)` (plus `text=`), `ft.Icons`, `ft.Colors`, `FilePicker.save_file()` async, `Dropdown(on_select=)` (plus `on_change=`), `FilePicker` dans `page.services` (plus `page.overlay` — hérite de `Service` et non `Control`).
+22. **GUI Desktop Alpha 2 — UX Polish (Sprint 23)** — `strings.py` (centralisation textes UI, `Strings.from_dict()` pour i18n future, `plural(n)`), `display_names.py` (mapping IDs → noms lisibles, `DEFAULT_SELECTED`), `preferences.py` (persistance dans `~/.config/motorsport-calendar/gui_prefs.json`), `assets/` (placeholder icône). `controller.generate_calendar()` retourne `tuple[int, int]` (events, sessions) au lieu de `int`. Dialogue succès : `page.show_dialog()` / `page.pop_dialog()`. Nom de fichier pré-rempli `motorsport-calendar-{year}.ics`. 36 nouveaux tests. 695 tests total.
 
 ---
 

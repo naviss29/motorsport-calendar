@@ -80,7 +80,25 @@
 
 ---
 
-## v0.4.0 — Desktop Edition Phase 2 (Sprint 23)
+## v0.3.1 — Desktop Alpha 2 — UX Polish ✅ Sprint 23 (2026-07-06)
+
+| Fonctionnalité | Statut |
+|---|---|
+| Noms de championnats lisibles (Formula 1, F1 Academy, FIA WEC…) | ✅ |
+| Formula 1 cochée par défaut au premier lancement | ✅ |
+| Mémorisation des sélections entre sessions | ✅ |
+| Bouton "Créer mon calendrier" (texte orienté utilisateur) | ✅ |
+| Nom de fichier intelligent `motorsport-calendar-{année}.ics` | ✅ |
+| Dernier dossier de sortie mémorisé | ✅ |
+| Dialogue succès : événements, sessions, chemin, "Ouvrir le dossier" | ✅ |
+| Toutes les chaînes centralisées dans `strings.py` | ✅ |
+| `display_names.py`, `preferences.py`, `assets/` (placeholder icône) | ✅ |
+| `docs/PRODUCT_VISION.md` | ✅ |
+| 36 nouveaux tests — 695 total | ✅ |
+
+---
+
+## v0.4.0 — Desktop Edition Phase 2 (Sprint 24)
 
 | Fonctionnalité | Priorité |
 |---|---|

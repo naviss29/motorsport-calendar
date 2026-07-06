@@ -7,6 +7,53 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint 23 — Desktop Alpha 2 — UX Polish
+
+### Added
+
+- **`motorsport_calendar/gui/strings.py`** — module de centralisation de toutes les chaînes
+  UI. `Strings` dataclass + singleton `STRINGS`. `Strings.from_dict()` prépare l'i18n future
+  (chargement depuis un fichier `fr.json` / `en.json` sans réécriture). Fonction `plural(n)`.
+- **`motorsport_calendar/gui/display_names.py`** — mapping IDs techniques → noms lisibles.
+  `get_display_name()` : `"formula1"` → `"Formula 1"`, `"f1-academy"` → `"F1 Academy"`,
+  `"wec"` → `"FIA WEC"`. Fallback title-case pour les IDs inconnus. `DEFAULT_SELECTED`.
+- **`motorsport_calendar/gui/preferences.py`** — persistance des préférences GUI entre
+  sessions dans `~/.config/motorsport-calendar/gui_prefs.json`.
+  `load_preferences()` / `save_preferences()`. Gestion silencieuse des erreurs I/O.
+- **`motorsport_calendar/gui/assets/`** — dossier prévu pour l'icône de l'application.
+  Commentaire dans `app.py` explique les 3 étapes pour la brancher.
+- **`docs/PRODUCT_VISION.md`** — vision produit (≤ 2 pages) : pourquoi / pour qui /
+  philosophie / périmètre négatif.
+
+### Changed
+
+- **Championnats lisibles** : les cases à cocher affichent désormais `"Formula 1"`,
+  `"Formula 2"`, `"Formula 3"`, `"F1 Academy"`, `"FIA WEC"` au lieu des IDs techniques.
+- **Valeurs par défaut intelligentes** : Formula 1 cochée au premier lancement.
+  Les sélections sont mémorisées entre les sessions.
+- **Bouton** : `"Générer"` → `"Créer mon calendrier"` (via `STRINGS`).
+- **Nom de fichier intelligent** : le dialogue de sauvegarde pré-remplit
+  `motorsport-calendar-{année}.ics` (calculé depuis la saison sélectionnée).
+- **Dernier dossier mémorisé** : le FilePicker rouvre dans le dernier dossier utilisé.
+- **Message de succès** : dialogue modal après génération réussie affichant :
+  - ✅ total d'événements et de sessions
+  - chemin complet du fichier enregistré
+  - résumé par championnat (✓ / ✗)
+  - boutons `[Ouvrir le dossier]` et `[Fermer]`
+- **Textes via `STRINGS`** : `main_view.py` ne contient plus aucun texte en dur.
+- **Dimensions fenêtre** : `min_width=520`, `min_height=580`, `width=560`, `height=700`
+  via `page.window`.
+- **`controller.generate_calendar()`** : retourne désormais
+  `dict[str, tuple[int, int] | str]` au lieu de `dict[str, int | str]`.
+  Le tuple est `(event_count, session_count)`.
+
+### Tests
+
+- 36 nouveaux tests : `test_gui_strings.py` (14), `test_gui_display_names.py` (13),
+  `test_gui_preferences.py` (9). Total : 695 tests.
+
+---
+
 ## [Unreleased] — Hotfix GUI-02 — FilePicker / page.services
 
 ### Fixed

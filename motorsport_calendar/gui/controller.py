@@ -24,12 +24,12 @@ async def generate_calendar(
     output_path: str,
     *,
     refresh: bool = False,
-) -> dict[str, int | str]:
+) -> dict[str, tuple[int, int] | str]:
     """Generate an ICS file for the selected championships.
 
     Mirrors the CLI ``generate`` pipeline without duplicating any logic.
     Returns a dict mapping each championship_id to either:
-    - an int (event count) on success
+    - a tuple (event_count, session_count) on success
     - a str (error message) on failure
 
     Does NOT call asyncio.run() — intended to be awaited directly.
@@ -59,7 +59,7 @@ async def generate_calendar(
     source_registry.discover()
 
     provider_list: list[tuple[str, object]] = []
-    results: dict[str, int | str] = {}
+    results: dict[str, tuple[int, int] | str] = {}
 
     for cid in championship_ids:
         provider_cfg = config.providers.get(cid) or ProviderConfig()
@@ -88,7 +88,8 @@ async def generate_calendar(
         try:
             events = await provider.fetch_events(cid, year)  # type: ignore[union-attr]
             all_events.extend(events)
-            results[cid] = len(events)
+            session_count = sum(len(e.sessions) for e in events)
+            results[cid] = (len(events), session_count)
         except NotImplementedError:
             results[cid] = "source non implémentée"
         except httpx.HTTPStatusError as exc:

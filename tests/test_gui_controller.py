@@ -130,7 +130,7 @@ class TestGenerateCalendarFormula2:
                 championship_ids=["formula2"],
                 output_path=str(tmp_path / "out.ics"),
             )
-        assert result.get("formula2") == 0
+        assert result.get("formula2") == (0, 0)
 
     async def test_zero_events_produces_no_file(self, tmp_path: Path) -> None:
         from motorsport_calendar.providers.formula2.sources.f1calendar import (
@@ -157,7 +157,8 @@ class TestGenerateCalendarFormula2:
                 championship_ids=["formula2"],
                 output_path=str(tmp_path / "out.ics"),
             )
-        assert result.get("formula2") == 1
+        # _F2_ONE_RACE has 1 event with 4 sessions (fp1, qualifying, sprintRace, feature)
+        assert result.get("formula2") == (1, 4)
 
     async def test_one_event_creates_ics_file(self, tmp_path: Path) -> None:
         from motorsport_calendar.providers.formula2.sources.f1calendar import (
@@ -242,6 +243,6 @@ class TestGenerateCalendarErrors:
                 championship_ids=["formula2", "wec"],
                 output_path=str(output),
             )
-        assert isinstance(result.get("formula2"), int)
+        assert isinstance(result.get("formula2"), tuple)
         assert isinstance(result.get("wec"), str)
         assert output.exists()
