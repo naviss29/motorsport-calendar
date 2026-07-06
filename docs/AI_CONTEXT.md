@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 > Fichier de reprise rapide pour une IA. Mis à jour après chaque session.
-> Dernière mise à jour : 2026-07-06 (Sprint 24)
+> Dernière mise à jour : 2026-07-06 (Sprint 25)
 
 ---
 
@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.2.0 (alpha)
-- **Phase** : Sprint 24 — Desktop Alpha 3 — Product Polish ✅
-- **Tests** : 720 passants, 0 échouants — couverture ~94 %
+- **Phase** : Sprint 25 — Release Alpha Phase 1 ✅
+- **Tests** : 764 passants, 0 échouants — couverture ~94 %
 - **Branche** : `master`
 
 ---
@@ -142,19 +142,19 @@ motorsport_calendar/
 20. **Dataset Reality Check (QA-03)** — Bug critique corrigé : `F1CalendarBaseSource` utilisait `raw.get("events", [])` alors que le dataset `sportstimes/f1` utilise `"races"`. F2/F3/F1 Academy retournaient 0 événements en production depuis Sprint 14. Correction : `raw.get("races", [])`. Fixtures de tests corrigées (`"events"` → `"races"` dans 5 fichiers). Fixtures réelles ajoutées dans `tests/fixtures/real/` (F2, F3, F1A — 2 événements chacun). 16 nouveaux tests (3 dans `TestRacesKeyRegression` + 13 dans `test_real_fixtures.py`).
 21. **GUI Desktop Phase 1 (Sprint 22 + Hotfix GUI-01 + GUI-02)** — Package `motorsport_calendar/gui/` : `models.py` (GenerateState), `controller.py` (list_championships + async generate_calendar), `main_view.py` (Flet UI), `app.py` (ft.run), `__main__.py`. Dépendance optionnelle `flet>=0.80`. Entrée script `motocal-gui`. 32 tests GUI (12 models + 20 controller, sans Flet). Flet 0.85 : `ft.run()`, `ft.Button(content=str)` (plus `text=`), `ft.Icons`, `ft.Colors`, `FilePicker.save_file()` async, `Dropdown(on_select=)` (plus `on_change=`), `FilePicker` dans `page.services` (plus `page.overlay` — hérite de `Service` et non `Control`).
 22. **GUI Desktop Alpha 2 — UX Polish (Sprint 23)** — `strings.py` (centralisation textes UI, `Strings.from_dict()` pour i18n future, `plural(n)`), `display_names.py` (mapping IDs → noms lisibles, `DEFAULT_SELECTED`), `preferences.py` (persistance dans `~/.config/motorsport-calendar/gui_prefs.json`), `assets/` (placeholder icône). `controller.generate_calendar()` retourne `tuple[int, int]` (events, sessions) au lieu de `int`. Dialogue succès : `page.show_dialog()` / `page.pop_dialog()`. Nom de fichier pré-rempli `motorsport-calendar-{year}.ics`. 36 nouveaux tests. 695 tests total.
+24. **Release Alpha Phase 1 (Sprint 25)** — Architecture `gui/views/` : 5 modules indépendants (`weekend.py`, `calendar.py`, `favorites.py`, `preferences.py`, `about.py`), chacun exposant `build_*_view()`. `CalendarViewControls` dataclass pour injecter les contrôles dans `calendar.py`. `PreferencesModel` frozen dataclass (language, timezone, first_day_of_week, favorite_championships, preferred_calendar, bapps_sync_enabled). `main_view.py` refactorisé en shell de navigation pur. Navigation 5 destinations : Ce week-end / Mon calendrier / Mes favoris / Préférences / À propos. Flet fix bonus : `ft.Border.all()` (pas `ft.border.all()`). 44 nouveaux tests. **764 tests total**.
 23. **GUI Desktop Alpha 3 — Product Polish (Sprint 24)** — `categories.py` (`Category` StrEnum 5 valeurs, `ChampionshipGroup` frozen dataclass, `GROUPS` registre, `get_groups_for()` helper avec fallback). Navigation `ft.NavigationRail` 3 destinations (Accueil/Calendrier/À propos). `page.on_resize` pour rail étendu >900px. Championnats groupés visuellement (`🏎 Formula`, `🏁 Endurance`). Écran Accueil + écran À propos (lien GitHub via `ft.UrlLauncher`). `strings.py` + 11 chaînes (nav + about). 25 nouveaux tests. **720 tests total**. Services Flet : `FilePicker` + `UrlLauncher` dans `page.services`.
 
 ---
 
 ## Fonctionnalités en cours / prochaines
 
-**Prochaines tâches recommandées** (Sprint 25+) :
+**Prochaines tâches recommandées** (Sprint 26 — Release Alpha Phase 2) :
 
 1. **Packaging Windows `.exe`** — `flet build windows` → distributable sans Python
-2. **`PorscheSupercupProvider`** — même pattern que F3/F1Academy, slug dataset à confirmer (probablement `porsche-supercup`). Regrouper dans `GROUPS` sous `Category.FORMULA`.
-3. **`OfficialWecSource`** — scraping HTML de `fiawec.com/en/season`
-   - Inspecter les XHR en DevTools avant d'implémenter
-4. **`ELMSSource`** — scraping `europeanlemansseries.com` (XHR d'abord, HTML sinon)
+2. **Fonctionnalités "Ce week-end"** — fetch du prochain événement, afficher dans `weekend.py`
+3. **Fonctionnalités "Mes favoris"** — sauvegarder/charger une liste de championnats favoris
+4. **Activation Préférences** — brancher `PreferencesModel` sur l'UI (dropdowns actifs)
 5. **Icône application** — placer `icon.png` dans `gui/assets/`, décommenter `assets_dir` dans `app.py`
 
 ---

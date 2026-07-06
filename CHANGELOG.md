@@ -7,6 +7,43 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint 25 — Release Alpha Phase 1 — Navigation Architecture
+
+### Added
+
+- **`motorsport_calendar/gui/views/`** — package de vues indépendantes (une par destination).
+  Chaque module expose une fonction `build_*_view()` qui retourne un `ft.Control`.
+  `main_view.py` ne contient plus que le shell de navigation et l'état partagé.
+- **`views/weekend.py`** — 🏁 Ce week-end : placeholder structuré avec card skeleton
+  (Championnat, Circuit, Pays, Sessions) + message "Aucune course ce week-end".
+- **`views/calendar.py`** — 📅 Mon calendrier : `CalendarViewControls` dataclass + `build_calendar_view()`.
+  Layout extrait de `main_view.py`, logique/état inchangés.
+- **`views/favorites.py`** — ⭐ Mes favoris : placeholder "Vous pourrez bientôt retrouver ici…".
+- **`views/preferences.py`** — ⚙ Préférences : liste des 6 rubriques futures (Langue, Fuseau
+  horaire, Premier jour, Championnats favoris, Calendrier préféré, Synchronisation BApps)
+  chacune avec chip "Disponible prochainement". `_PREF_ROWS` ordonné, lié à `PreferencesModel`.
+- **`views/about.py`** — ℹ À propos : extrait de `main_view.py`, reçoit `url_launcher` en paramètre.
+- **`PreferencesModel`** dans `gui/models.py` — dataclass `frozen=True` avec 6 champs typés :
+  `language`, `timezone`, `first_day_of_week`, `favorite_championships`, `preferred_calendar`,
+  `bapps_sync_enabled`. Pas de logique métier — structure uniquement.
+- **`strings.py`** : +16 chaînes — nav (weekend, my_calendar, favorites, preferences) + weekend
+  (empty_title, coming_soon, section_*) + favorites + prefs (6 rubriques + coming_soon).
+- **44 nouveaux tests** : `test_gui_preferences_model.py` (22) + `test_gui_views.py` (22).
+
+### Changed
+
+- **Navigation** : 3 destinations → 5 destinations : 🏁 Ce week-end / 📅 Mon calendrier /
+  ⭐ Mes favoris / ⚙ Préférences / ℹ À propos. "Accueil" supprimé.
+- **`main_view.py`** refactorisé : ne contient plus que le shell de navigation (`NavigationRail`,
+  services, état partagé, handlers). Les layouts sont délégués aux modules `views/`.
+- **Flet 0.85 fixes bonus** : `ft.border.all()` → `ft.Border.all()` (module ≠ classe).
+
+### Tests
+
+- 44 nouveaux tests. Total : **764 tests** — couverture 94 %.
+
+---
+
 ## [Unreleased] — Sprint 24 — Desktop Alpha 3 — Product Polish
 
 ### Added

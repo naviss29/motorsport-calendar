@@ -46,17 +46,38 @@ class Strings:
     summary_error: str = "✗ {name} : {err}"
 
     # Navigation rail
-    nav_home: str = "Accueil"
-    nav_calendar: str = "Calendrier"
+    nav_weekend: str = "Ce week-end"
+    nav_my_calendar: str = "Mon calendrier"
+    nav_favorites: str = "Mes favoris"
+    nav_preferences: str = "Préférences"
     nav_about: str = "À propos"
 
-    # Home screen
-    home_title: str = "Bienvenue"
-    home_body: str = (
-        "Créez votre calendrier de courses automobiles personnalisé "
-        "et importez-le dans Google Calendar, Apple Calendar ou Outlook."
-    )
-    home_cta: str = "Créer mon calendrier"
+    # Kept for backward compat — mapped to nav_weekend/nav_my_calendar
+    nav_home: str = "Accueil"
+    nav_calendar: str = "Calendrier"
+
+    # Weekend screen
+    weekend_empty_title: str = "Aucune course ce week-end"
+    weekend_coming_soon: str = "Cette fonctionnalité arrivera prochainement."
+    weekend_section_championship: str = "Championnat"
+    weekend_section_circuit: str = "Circuit"
+    weekend_section_country: str = "Pays"
+    weekend_section_sessions: str = "Sessions"
+    weekend_layout_preview: str = "Aperçu du layout à venir"
+
+    # Favorites screen
+    favorites_empty: str = "Vous pourrez bientôt retrouver ici vos championnats favoris."
+    favorites_coming_soon: str = "Cette fonctionnalité arrivera prochainement."
+
+    # Preferences screen
+    prefs_title: str = "Préférences"
+    prefs_coming_soon: str = "Disponible prochainement"
+    prefs_language: str = "Langue"
+    prefs_timezone: str = "Fuseau horaire"
+    prefs_first_day: str = "Premier jour de la semaine"
+    prefs_favorites: str = "Championnats favoris"
+    prefs_preferred_calendar: str = "Calendrier préféré"
+    prefs_bapps_sync: str = "Synchronisation BApps"
 
     # About screen
     about_version: str = "Version Alpha"

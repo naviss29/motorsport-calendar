@@ -98,6 +98,21 @@
 
 ---
 
+## v0.4.0 — Release Alpha Phase 1 ✅ Sprint 25 (2026-07-06)
+
+| Fonctionnalité | Statut |
+|---|---|
+| Navigation 5 pages : Ce week-end / Mon calendrier / Mes favoris / Préférences / À propos | ✅ |
+| Architecture `views/` — une vue par module, indépendante et testable | ✅ |
+| `views/weekend.py` — skeleton layout (Circuit, Pays, Championnat, Sessions) | ✅ |
+| `views/favorites.py` — placeholder Mes favoris | ✅ |
+| `views/preferences.py` — 6 rubriques préférences avec chip "prochainement" | ✅ |
+| `PreferencesModel` — dataclass frozen avec 6 champs typés | ✅ |
+| `main_view.py` refactorisé : shell de navigation uniquement | ✅ |
+| 44 nouveaux tests — 764 total | ✅ |
+
+---
+
 ## v0.3.2 — Desktop Alpha 3 — Product Polish ✅ Sprint 24 (2026-07-06)
 
 | Fonctionnalité | Statut |

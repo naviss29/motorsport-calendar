@@ -1,4 +1,4 @@
-"""GUI state — no business logic, no Flet dependency."""
+"""GUI state and preference models — no business logic, no Flet dependency."""
 
 from __future__ import annotations
 
@@ -26,3 +26,28 @@ class GenerateState:
             and bool(self.output_path)
             and not self.is_generating
         )
+
+
+@dataclass(frozen=True)
+class PreferencesModel:
+    """Typed model for user preferences.
+
+    Acts as the single source of truth for all configurable settings.
+    Future UI sections will bind directly to these fields.
+    Default values reflect the French-speaking motorsport fan baseline.
+
+    Fields:
+        language:                 UI language code (e.g. "fr", "en")
+        timezone:                 IANA tz string (e.g. "Europe/Paris")
+        first_day_of_week:        0 = Sunday, 1 = Monday (ISO 8601 default)
+        favorite_championships:   ordered list of championship IDs
+        preferred_calendar:       target app slug ("google", "apple", "outlook")
+        bapps_sync_enabled:       future BApps cloud sync opt-in
+    """
+
+    language: str = "fr"
+    timezone: str = "Europe/Paris"
+    first_day_of_week: int = 1
+    favorite_championships: tuple[str, ...] = ()
+    preferred_calendar: str = "google"
+    bapps_sync_enabled: bool = False
