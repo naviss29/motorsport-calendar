@@ -108,7 +108,7 @@ class F1CalendarBaseSource(JsonDataSource, ABC):
         championship = self._make_championship(year)
         return [
             self._build_event(championship, event_data, year)
-            for event_data in raw.get("events", [])  # type: ignore[union-attr]
+            for event_data in raw.get("races", [])  # type: ignore[union-attr]
         ]
 
     async def fetch_json(self, url: str, params: dict[str, Any]) -> list | dict:

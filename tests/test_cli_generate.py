@@ -188,6 +188,22 @@ def _mock_wec(events: list) -> AsyncMock:
     return AsyncMock(return_value=events)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_support_series():
+    """Prevent F2/F3/F1-Academy from making real HTTP calls in every test.
+
+    Tests that need specific F2/F3/F1-Academy behaviour (error paths etc.)
+    override these mocks with explicit patch.object calls inside the test body.
+    """
+    _empty = AsyncMock(return_value={"races": []})
+    with (
+        patch.object(F2CalendarSource, "fetch_json", _empty),
+        patch.object(F3CalendarSource, "fetch_json", _empty),
+        patch.object(F1AcademyCalendarSource, "fetch_json", _empty),
+    ):
+        yield
+
+
 # ---------------------------------------------------------------------------
 # Happy path
 # ---------------------------------------------------------------------------
@@ -208,7 +224,13 @@ class TestGenerateHappyPath:
 
     def test_f1_succeeds_wec_fails_vevent_count_is_f1_only(self, tmp_path: Path) -> None:
         output = tmp_path / "all.ics"
-        with patch.object(OpenF1Source, "_get_json", _mock_f1(_F1_MEETINGS, _F1_SESSIONS)):
+        _empty = AsyncMock(return_value={"races": []})
+        with (
+            patch.object(OpenF1Source, "_get_json", _mock_f1(_F1_MEETINGS, _F1_SESSIONS)),
+            patch.object(F2CalendarSource, "fetch_json", _empty),
+            patch.object(F3CalendarSource, "fetch_json", _empty),
+            patch.object(F1AcademyCalendarSource, "fetch_json", _empty),
+        ):
             runner.invoke(app, ["generate", "2024", str(output)])
         content = output.read_text(encoding="utf-8")
         assert content.count("BEGIN:VEVENT") == _F1_SESSION_COUNT
@@ -223,9 +245,13 @@ class TestGenerateHappyPath:
 
     def test_both_succeed_vevent_count_is_sum_of_all_sessions(self, tmp_path: Path) -> None:
         output = tmp_path / "all.ics"
+        _empty = AsyncMock(return_value={"races": []})
         with (
             patch.object(OpenF1Source, "_get_json", _mock_f1(_F1_MEETINGS, _F1_SESSIONS)),
             patch.object(OfficialWecSource, "get_season", _mock_wec(_WEC_EVENTS)),
+            patch.object(F2CalendarSource, "fetch_json", _empty),
+            patch.object(F3CalendarSource, "fetch_json", _empty),
+            patch.object(F1AcademyCalendarSource, "fetch_json", _empty),
         ):
             runner.invoke(app, ["generate", "2024", str(output)])
         content = output.read_text(encoding="utf-8")
@@ -331,9 +357,13 @@ class TestGenerateErrors:
         f1_fail = AsyncMock(
             side_effect=httpx.HTTPStatusError("503", request=request, response=response)
         )
+        _empty = AsyncMock(return_value={"races": []})
         with (
             patch.object(OpenF1Source, "_get_json", f1_fail),
             patch.object(OfficialWecSource, "get_season", _mock_wec(_WEC_EVENTS)),
+            patch.object(F2CalendarSource, "fetch_json", _empty),
+            patch.object(F3CalendarSource, "fetch_json", _empty),
+            patch.object(F1AcademyCalendarSource, "fetch_json", _empty),
         ):
             runner.invoke(app, ["generate", "2024", str(output)])
         content = output.read_text(encoding="utf-8")

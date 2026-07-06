@@ -7,6 +7,46 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint QA-03
+
+### Fixed
+
+- **Bug critique : F2/F3/F1 Academy retournaient systématiquement 0 événements** (ADR-017).
+  `F1CalendarBaseSource._get_season()` utilisait `raw.get("events", [])` mais le dataset
+  `sportstimes/f1` (GitHub) utilise la clé `"races"` — pas `"events"`. Ce bug existait
+  depuis l'introduction du Support Series Framework (Sprint 14) et a masqué 100 % des données
+  F2/F3/F1 Academy en production depuis le début.
+  Correction : `raw.get("races", [])` dans `f1calendar_base.py`.
+  **Pourquoi les tests n'ont rien détecté** : les fixtures de tests utilisaient aussi `"events"`
+  (copiées/collées depuis le code), ce qui faisait correspondre les tests au code incorrect
+  sans jamais tester le comportement réel du dataset.
+
+### Added
+
+- **Fixtures réelles** `tests/fixtures/real/` : extraits minimaux (2 events) du dataset réel
+  `sportstimes/f1` pour F2 (Australian + Bahrain 2025), F3 (Australian + Bahrain 2025) et
+  F1 Academy (Chinese + Jeddah 2025). Utilisent la clé `"races"` et les clés de sessions
+  réelles. Ces fixtures servent de garde-fou contre toute régression similaire.
+- **Tests `tests/test_real_fixtures.py`** : 3 classes (`TestF2RealFixture`, `TestF3RealFixture`,
+  `TestF1AcademyRealFixture`), chacune vérifiant que le fixture contient `"races"`, que 2 events
+  sont chargés, et que le CLI produit le bon nombre de VEVENTs.
+- **`TestRacesKeyRegression`** dans `test_f1calendar_base.py` : 3 tests documentant que
+  `"races"` est lu, `"events"` est ignoré, et que si les deux clés coexistent seul `"races"`
+  est lu.
+- **Isolation des tests CLI `generate`** : fixture `autouse=True` `_isolate_support_series`
+  dans `test_cli_generate.py` empêche F2/F3/F1 Academy de faire de vrais appels réseau vers
+  GitHub pendant les tests d'intégration F1/WEC.
+
+### Changed
+
+- `tests/test_f1calendar_base.py` : `"events"` → `"races"` dans `_TEST_RESPONSE` et
+  `_EMPTY_RESPONSE` (fixtures alignées sur le dataset réel).
+- `tests/test_f1calendar_source.py` : `"events"` → `"races"` dans toutes les fixtures.
+- `tests/test_cli_generate_f2.py`, `test_cli_generate_f3.py`, `test_cli_generate_f1_academy.py` :
+  `"events"` → `"races"` dans toutes les fixtures de chaque fichier.
+
+---
+
 ## [Unreleased] — Sprint 21.2
 
 ### Fixed

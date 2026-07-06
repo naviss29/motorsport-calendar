@@ -1,7 +1,7 @@
 # AI_CONTEXT.md
 
 > Fichier de reprise rapide pour une IA. Mis à jour après chaque session.
-> Dernière mise à jour : 2026-07-06
+> Dernière mise à jour : 2026-07-06 (Sprint QA-03)
 
 ---
 
@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.2.0 (alpha)
-- **Phase** : Sprint 21.2 — F2 session key hotfix (`fp1`→`practice`, `sprintRace`→`sprint` depuis 2025)
-- **Tests** : ~611 passants, 0 échouants — couverture ~94 %
+- **Phase** : Sprint QA-03 — Dataset Reality Check (`"events"` → `"races"`, fixtures réelles)
+- **Tests** : 627 passants, 0 échouants — couverture ~94 %
 - **Branche** : `master`
 
 ---
@@ -139,6 +139,7 @@ motorsport_calendar/
 17. **Packaging v0.2.0** — `pyproject.toml` : version 0.2.0, `typer>=0.12` (plus `[all]`), `python-dateutil` supprimé, Python 3.14 classifié. `__main__.py` : `python -m motorsport_calendar` opérationnel. CI : matrix Ubuntu + macOS + Windows × Python 3.12/3.13.
 18. **Formula3Provider + F1CalendarSource** — support complet FIA F3 via JSON MIT (f1calendar.com). Sessions : Free Practice (45 min), Qualifying (30 min), Sprint Race (30 min), Feature Race (40 min). Clés dataset F3 : `practice`, `qualifying`, `sprint`, `feature` (≠ F2). 13 circuits IANA (2021-2025). CLI `generate-f3 YEAR OUTPUT.ics`. Auto-inclus dans `generate`. Couverture 2022+.
 19. **F1AcademyProvider + F1CalendarSource** — support complet F1 Academy via JSON MIT. Slug dataset : `f1-academy`. Sessions : fp1/fp2/qualifying1/[qualifying2]/race1/race2/race3. 15 circuits IANA (2023-2025). CLI `generate-f1-academy YEAR OUTPUT.ics`. Couverture 2023+. Mapping contraint (ADR-016) : race2 → FP3 pour éviter collision d'UIDs ICS sans modifier les modèles métier.
+20. **Dataset Reality Check (QA-03)** — Bug critique corrigé : `F1CalendarBaseSource` utilisait `raw.get("events", [])` alors que le dataset `sportstimes/f1` utilise `"races"`. F2/F3/F1 Academy retournaient 0 événements en production depuis Sprint 14. Correction : `raw.get("races", [])`. Fixtures de tests corrigées (`"events"` → `"races"` dans 5 fichiers). Fixtures réelles ajoutées dans `tests/fixtures/real/` (F2, F3, F1A — 2 événements chacun). 16 nouveaux tests (3 dans `TestRacesKeyRegression` + 13 dans `test_real_fixtures.py`).
 
 ---
 
@@ -174,7 +175,8 @@ motorsport_calendar/
 - **F1CalendarSource (F1 Academy)** : config F1A uniquement — `_series_key="f1-academy"`, sessions : `fp1/fp2/qualifying1/qualifying2/race1/race2/race3`. `_CIRCUIT_DATA` : 15 circuits (2023-2025). Mapping contraint : `race2 → FP3` workaround ADR-016. Package Python : `f1_academy` (underscore), championship ID : `"f1-academy"` (tiret). `qualifying2` optionnel (absent en 2025+).
 - **test_cli_generate.py — imports disambiguïsés** : F1Academy importée comme `F1AcademyCalendarSource`, mockée dans `test_all_providers_fail_*`.
 - **F1CalendarBaseSource** : dans `providers/support_series/f1calendar_base.py`. `__init__(client, cache, *, refresh)`, `get_season(year)`, `fetch_json(url, params)`, `_resolve_circuit_data(slug)`, `_build_circuit(event_data)`, `_build_event(championship, event_data, year)`. `_build_session(timestamp, type, duration, title)` = fonction module-level pure.
-- **Mock pour tests support series** : `patch.object(F1CalendarSource, "fetch_json", AsyncMock(return_value=...))` — fonctionne même si `fetch_json` est hérité de la base (patch sur la sous-classe). Pour F3 : `patch("motorsport_calendar.providers.formula3.sources.f1calendar.F1CalendarSource.fetch_json", ...)`.
+- **Mock pour tests support series** : `patch.object(F1CalendarSource, "fetch_json", AsyncMock(return_value=...))` — fonctionne même si `fetch_json` est hérité de la base (patch sur la sous-classe). Pour F3 : `patch("motorsport_calendar.providers.formula3.sources.f1calendar.F1CalendarSource.fetch_json", ...)`. **La valeur de retour doit utiliser `"races"` comme clé, jamais `"events"` (ADR-017)**.
+- **Dataset key `"races"`** : le dataset `sportstimes/f1` utilise `"races"` comme clé de premier niveau, **pas** `"events"`. Toutes les fixtures de test (réelles ou mock) doivent utiliser `{"races": [...]}`. `"events"` est silencieusement ignoré. Tests de régression dans `TestRacesKeyRegression` (`test_f1calendar_base.py`) et `tests/fixtures/real/`.
 - **HttpCache mock** : depuis Sprint 18, patcher `"motorsport_calendar.providers.support_series.f1calendar_base.HttpCache"` (et non plus `f1calendar.HttpCache`).
 - **test_cli_generate.py — imports disambiguïsés** : F2 importée comme `F2CalendarSource`, F3 comme `F3CalendarSource` pour éviter les conflits de noms dans les tests "tout échoue". Les deux sont mockées dans `test_all_providers_fail_*`.
 - **Ajouter un support series** (F3, Academy, Supercup) : créer `providers/XYZ/` avec source héritant de `F1CalendarBaseSource` — 4 overrides, ~15 lignes. Même pattern que `F1CalendarSource`.

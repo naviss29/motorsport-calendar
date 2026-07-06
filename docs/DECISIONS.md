@@ -369,6 +369,52 @@ F3 ne couvre que les circuits F1 européens + Bahreïn + Melbourne (13 slugs con
 
 ---
 
+## ADR-017 — Dataset `sportstimes/f1` : clé `"races"`, pas `"events"`
+
+**Contexte**
+Sprint QA-03 — audit de l'environnement réel (`python -m motorsport_calendar generate 2026`).
+F2, F3 et F1 Academy retournaient systématiquement 0 événements depuis l'introduction du
+Support Series Framework (Sprint 14). La commande `generate 2026` produisait 26 événements
+F1 mais 0 pour chaque série support.
+
+**Cause racine**
+`F1CalendarBaseSource._get_season()` lisait `raw.get("events", [])`. Mais le dataset
+`sportstimes/f1` sur GitHub (source officielle, MIT) utilise `"races"` comme clé de premier
+niveau — pas `"events"`. Le payload réel ressemble à :
+```json
+{ "races": [ { "name": "...", "sessions": {...} } ] }
+```
+Les tests unitaires et d'intégration utilisaient eux-mêmes la clé `"events"` dans leurs
+fixtures (copié/collé du code incorrect), masquant le bug pendant tout le développement.
+
+**Décision**
+1. `f1calendar_base.py` ligne 111 : `raw.get("events", [])` → `raw.get("races", [])`.
+2. Toutes les fixtures de test (`test_f1calendar_base.py`, `test_f1calendar_source.py`,
+   `test_cli_generate_f2.py`, `test_cli_generate_f3.py`, `test_cli_generate_f1_academy.py`)
+   corrigées (`"events"` → `"races"`).
+3. Ajout de `tests/fixtures/real/` : extraits minimaux (2 événements) tirés directement
+   du dataset réel GitHub (F2, F3, F1 Academy — saison 2025). Ces fixtures sont la
+   référence de vérité : si le dataset change de structure, les tests `test_real_fixtures.py`
+   le détectent immédiatement.
+4. `TestRacesKeyRegression` dans `test_f1calendar_base.py` : 3 tests qui documentent et
+   protègent ce comportement (`"races"` lu, `"events"` ignoré, les deux présents → seul
+   `"races"` est lu).
+
+**Règle pour les futurs tests**
+Toute fixture mock renvoyée par `fetch_json` doit utiliser `{"races": [...]}`.
+Ne jamais utiliser `{"events": [...]}` — c'est silencieusement ignoré.
+
+**Conséquences**
+- F2/F3/F1 Academy retournent maintenant les données réelles en production. ✓
+- 627 tests passent (16 nouveaux).
+- `tests/fixtures/real/` : référence vivante du format dataset — à mettre à jour si la
+  structure du dataset `sportstimes/f1` change.
+- **Comment éviter que cela se reproduise** : les nouveaux providers support series
+  doivent ajouter une fixture dans `tests/fixtures/real/` et un test `test_real_fixtures.py`
+  AVANT d'écrire la moindre fixture mock. Vérifier le dataset réel en premier.
+
+---
+
 ## ADR-010 — VALARM dans IcsExporter via `alarm_minutes`
 
 **Contexte**

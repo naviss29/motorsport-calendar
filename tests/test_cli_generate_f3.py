@@ -47,17 +47,17 @@ _MONACO_EVENT: dict[str, Any] = {
 
 _F1CALENDAR_ONE_RACE: dict[str, Any] = {
     "name": "Formula 3",
-    "events": [_BAHRAIN_EVENT],
+    "races": [_BAHRAIN_EVENT],
 }
 
 _F1CALENDAR_TWO_RACES: dict[str, Any] = {
     "name": "Formula 3",
-    "events": [_BAHRAIN_EVENT, _MONACO_EVENT],
+    "races": [_BAHRAIN_EVENT, _MONACO_EVENT],
 }
 
 _F1CALENDAR_EMPTY: dict[str, Any] = {
     "name": "Formula 3",
-    "events": [],
+    "races": [],
 }
 
 

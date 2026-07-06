@@ -79,17 +79,17 @@ _MONACO_EVENT: dict[str, Any] = {
 
 _F1CALENDAR_ONE_RACE: dict[str, Any] = {
     "name": "Formula 2",
-    "events": [_BAHRAIN_EVENT],
+    "races": [_BAHRAIN_EVENT],
 }
 
 _F1CALENDAR_TWO_RACES: dict[str, Any] = {
     "name": "Formula 2",
-    "events": [_BAHRAIN_EVENT, _MONACO_EVENT],
+    "races": [_BAHRAIN_EVENT, _MONACO_EVENT],
 }
 
 _F1CALENDAR_EMPTY: dict[str, Any] = {
     "name": "Formula 2",
-    "events": [],
+    "races": [],
 }
 
 
@@ -255,13 +255,13 @@ class TestF2SessionKeyCompat:
 
     def test_2025_cli_produces_4_vevents(self, tmp_path: Path) -> None:
         output = tmp_path / "f2-2025.ics"
-        payload = {"name": "Formula 2", "events": [_BAHRAIN_EVENT_2025]}
+        payload = {"name": "Formula 2", "races": [_BAHRAIN_EVENT_2025]}
         _run_generate_f2(2025, output, payload)
         assert output.read_text().count("BEGIN:VEVENT") == 4
 
     def test_2026_cli_produces_4_vevents(self, tmp_path: Path) -> None:
         output = tmp_path / "f2-2026.ics"
-        payload = {"name": "Formula 2", "events": [_BAHRAIN_EVENT_2026]}
+        payload = {"name": "Formula 2", "races": [_BAHRAIN_EVENT_2026]}
         _run_generate_f2(2026, output, payload)
         assert output.read_text().count("BEGIN:VEVENT") == 4
 

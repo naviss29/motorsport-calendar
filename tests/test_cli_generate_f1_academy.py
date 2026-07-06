@@ -70,22 +70,22 @@ _MIAMI_EVENT: dict[str, Any] = {
 
 _F1CALENDAR_ONE_RACE: dict[str, Any] = {
     "name": "F1 Academy",
-    "events": [_JEDDAH_EVENT],
+    "races": [_JEDDAH_EVENT],
 }
 
 _F1CALENDAR_TWO_RACES: dict[str, Any] = {
     "name": "F1 Academy",
-    "events": [_JEDDAH_EVENT, _MIAMI_EVENT],
+    "races": [_JEDDAH_EVENT, _MIAMI_EVENT],
 }
 
 _F1CALENDAR_WITH_Q2: dict[str, Any] = {
     "name": "F1 Academy",
-    "events": [_SPIELBERG_EVENT_2023],
+    "races": [_SPIELBERG_EVENT_2023],
 }
 
 _F1CALENDAR_EMPTY: dict[str, Any] = {
     "name": "F1 Academy",
-    "events": [],
+    "races": [],
 }
 
 

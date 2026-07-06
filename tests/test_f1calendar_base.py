@@ -48,10 +48,10 @@ _TEST_EVENT: dict[str, Any] = {
 
 _TEST_RESPONSE: dict[str, Any] = {
     "name": "Test Series",
-    "events": [_TEST_EVENT],
+    "races": [_TEST_EVENT],
 }
 
-_EMPTY_RESPONSE: dict[str, Any] = {"name": "Test Series", "events": []}
+_EMPTY_RESPONSE: dict[str, Any] = {"name": "Test Series", "races": []}
 
 
 class _ConcreteSource(F1CalendarBaseSource):
@@ -376,3 +376,29 @@ class TestBuildSession:
         session = _build_session("2024-05-26T13:00:00Z", SessionType.RACE, 60, "Feature Race")
         assert session is not None
         assert session.title == "Feature Race"
+
+
+# ---------------------------------------------------------------------------
+# TestRacesKeyRegression — Sprint QA-03
+# Documents that the dataset uses "races", not "events".
+# ---------------------------------------------------------------------------
+
+
+class TestRacesKeyRegression:
+    async def test_races_key_returns_events(self) -> None:
+        """Dataset uses 'races' as the top-level key — must be non-empty."""
+        source = _ConcreteSource(_make_client({"races": [_TEST_EVENT]}))
+        events = await source.get_season(2024)
+        assert len(events) == 1
+
+    async def test_events_key_is_ignored(self) -> None:
+        """Legacy 'events' key must NOT be read — regression guard."""
+        source = _ConcreteSource(_make_client({"events": [_TEST_EVENT]}))
+        events = await source.get_season(2024)
+        assert events == []
+
+    async def test_both_keys_present_reads_only_races(self) -> None:
+        """If both keys exist, only 'races' is read."""
+        source = _ConcreteSource(_make_client({"races": [_TEST_EVENT], "events": []}))
+        events = await source.get_season(2024)
+        assert len(events) == 1
