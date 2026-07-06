@@ -7,6 +7,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint 22 — Desktop Edition (Phase 1)
+
+### Added
+
+- **Interface graphique desktop** — `motocal-gui` (ou `python -m motorsport_calendar.gui`).
+  Fenêtre Flet avec :
+  - Sélecteur de saison (année courante ±5)
+  - Cases à cocher par championnat (liste automatique depuis `ProviderRegistry`)
+  - Sélecteur de fichier de sortie via `FilePicker` natif
+  - Bouton "Générer" (actif seulement si tous les champs sont remplis)
+  - Anneau de progression pendant la génération
+  - Affichage du résultat par championnat (✓ N événements / ✗ erreur)
+- **`motorsport_calendar/gui/`** — package dédié, zéro duplication du moteur :
+  - `models.py` — `GenerateState` (dataclass, état mutable de la vue)
+  - `controller.py` — `list_championships()` + `async generate_calendar()` (miroir exact du pipeline CLI `generate`)
+  - `main_view.py` — vue Flet complète (requiert `flet>=0.80`)
+  - `app.py` — point d'entrée `ft.run()`
+  - `__main__.py` — support `python -m motorsport_calendar.gui`
+- **Dépendance optionnelle** `flet>=0.80` : `pip install motorsport-calendar[gui]`
+  (la CLI reste installable sans Flet)
+- **Entrée script** `motocal-gui` dans `pyproject.toml`
+- **32 tests GUI** : `test_gui_models.py` (12 tests) + `test_gui_controller.py` (20 tests).
+  Aucune dépendance Flet dans les tests — `controller.py` et `models.py` sont purement Python.
+
+### Technical
+
+- Flet 0.85 API : `ft.run()` (remplace `ft.app()` déprécié), `ft.Button` (remplace `ft.ElevatedButton`), `ft.Icons` / `ft.Colors` (capitalisés), `FilePicker.save_file()` async.
+- Génération dans le thread de l'event loop Flet — les appels httpx s'exécutent dans la boucle asyncio de Flet, l'anneau de progression tourne pendant les requêtes réseau.
+
+---
+
 ## [Unreleased] — Sprint QA-03
 
 ### Fixed

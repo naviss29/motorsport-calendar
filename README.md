@@ -44,6 +44,7 @@ practice appears automatically with the correct local time.
 - **Formula 2** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT)
 - **Formula 3** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT, 2022+)
 - **F1 Academy** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT, 2023+)
+- **Desktop GUI** — native window via Flet (`motocal-gui`) — year picker, championship checkboxes, file picker
 - **Extensible architecture** — add a new series in a few files, zero changes elsewhere
 - **HTTP cache** — disk-based JSON cache with configurable TTL; skip with `--refresh`
 - **YAML configuration** — sources, cache path, alarm reminders, opt-out per championship
@@ -53,16 +54,24 @@ practice appears automatically with the correct local time.
 
 ## Installation
 
-### With pip (recommended)
+### CLI only (recommended)
 
 ```bash
 pip install motorsport-calendar
+```
+
+### CLI + Desktop GUI
+
+```bash
+pip install "motorsport-calendar[gui]"
 ```
 
 ### With uv
 
 ```bash
 uv tool install motorsport-calendar
+# With GUI:
+uv tool install "motorsport-calendar[gui]"
 ```
 
 ### From source
@@ -170,6 +179,29 @@ motocal providers
 # Show version
 motocal version
 ```
+
+---
+
+## Desktop GUI
+
+A native desktop window is available as an optional extra (requires [Flet](https://flet.dev)):
+
+```bash
+pip install "motorsport-calendar[gui]"
+motocal-gui
+# or
+python -m motorsport_calendar.gui
+```
+
+The GUI provides:
+- **Season picker** — current year ±5
+- **Championship checkboxes** — automatically populated from the provider registry
+- **File picker** — native OS save dialog for the `.ics` output
+- **Generate button** — active only when all fields are filled; shows progress while fetching
+- **Per-championship result summary** — ✓ N events / ✗ error message
+
+> The GUI uses exactly the same pipeline as the CLI — same providers, same cache, same
+> `config.yaml`, same ICS exporter. No business logic is duplicated.
 
 ---
 

@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = ["flet>=0.80"]
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
@@ -46,6 +47,7 @@ dev = [
 
 [project.scripts]
 motocal = "motorsport_calendar.cli:app"
+motocal-gui = "motorsport_calendar.gui.app:main"
 
 [project.urls]
 Homepage = "https://github.com/naviss29/motorsport-calendar"
@@ -68,4 +70,9 @@ addopts = [
 
 [tool.coverage.run]
 source = ["motorsport_calendar"]
-omit = ["tests/*"]
+omit = [
+    "tests/*",
+    "motorsport_calendar/gui/app.py",
+    "motorsport_calendar/gui/__main__.py",
+    "motorsport_calendar/gui/main_view.py",
+]

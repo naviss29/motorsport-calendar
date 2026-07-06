@@ -50,7 +50,50 @@
 
 ---
 
-## v0.3.0 — Nouvelles disciplines
+## v0.2.x — Nouvelles disciplines (Sprints 20-21-QA03) ✅ (2026-07-06)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `Formula3Provider` + `F1CalendarSource` — FIA F3 complet (2022+) | ✅ |
+| `F1AcademyProvider` + `F1CalendarSource` — F1 Academy complète (2023+) | ✅ |
+| Support Series Framework — `F1CalendarBaseSource` partagé F2/F3/Academy | ✅ |
+| Rétrocompatibilité F2 clés sessions 2024 (`fp1`/`sprintRace`) et 2025+ (`practice`/`sprint`) | ✅ |
+| Dataset Reality Check — correction bug `"events"` → `"races"`, fixtures réelles | ✅ |
+| 627 tests — couverture 94 % | ✅ |
+
+---
+
+## v0.3.0 — Desktop Edition ✅ Sprint 22 (2026-07-06)
+
+| Fonctionnalité | Statut |
+|---|---|
+| GUI Flet — fenêtre native desktop (`motocal-gui`) | ✅ |
+| Sélecteur de saison (année courante ±5) | ✅ |
+| Championnats auto-découverts depuis ProviderRegistry (cases à cocher) | ✅ |
+| FilePicker natif — dialogue OS de sauvegarde | ✅ |
+| Progression asynchrone — anneau pendant les requêtes réseau | ✅ |
+| Résumé par championnat (✓ N événements / ✗ erreur) | ✅ |
+| Dépendance optionnelle `flet>=0.80` (`pip install motorsport-calendar[gui]`) | ✅ |
+| Zéro duplication du moteur — même pipeline que la CLI | ✅ |
+| 32 tests GUI (models + controller, sans Flet) | ✅ |
+| 659 tests total — couverture ~93 % | ✅ |
+
+---
+
+## v0.4.0 — Desktop Edition Phase 2 (Sprint 23)
+
+| Fonctionnalité | Priorité |
+|---|---|
+| Packaging Windows `.exe` via `flet build windows` | 🔴 HAUTE |
+| Mémorisation du dernier fichier de sortie | 🟡 MOYENNE |
+| Option `--refresh` dans la GUI (case à cocher) | 🟡 MOYENNE |
+| Aperçu du nombre de sessions avant export | 🟡 MOYENNE |
+| Icône d'application personnalisée | 🟢 BASSE |
+| Drag & drop du fichier `.ics` généré | 🟢 BASSE |
+
+---
+
+## v0.5.0 — Nouvelles sources
 
 Sources documentées dans `docs/DATA_SOURCES.md`.
 
@@ -58,13 +101,9 @@ Sources documentées dans `docs/DATA_SOURCES.md`.
 |---|---|---|
 | `OfficialWecSource` — calendrier FIA WEC | Scraping `fiawec.com` (voir DATA_SOURCES.md) | 🔴 HAUTE |
 | `ELMSProvider` — European Le Mans Series | Scraping `europeanlemansseries.com` (XHR first) | 🔴 HAUTE |
-| `Formula3Provider` | Scraping `fiaformula3.com` + venues F1 | 🟡 MOYENNE |
-| `LeMansProvider` — Michelin Le Mans Cup + Road to Le Mans | Scraping `lemanscup.com` (JS-rendered) | 🟡 MOYENNE |
-| `F1AcademyProvider` | Scraping `f1academy.com` + venues F1 | 🟡 MOYENNE |
 | `PorscheSupercupProvider` | Scraping `racing.porsche.com` + venues F1 | 🟢 BASSE |
 | Export JSON (machine-readable) | — | 🟢 BASSE |
 | `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | — | 🟡 MOYENNE |
-| `URL` dans les VEVENTs (lien source officielle) | — | 🟡 MOYENNE |
 
 ---
 
