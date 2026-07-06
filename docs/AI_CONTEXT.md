@@ -9,8 +9,8 @@
 
 - **Nom** : motorsport-calendar
 - **Version** : 0.2.0 (alpha)
-- **Phase** : Sprint 19 — Packaging & QA (version 0.2.0, __main__.py, tests packaging, CI multi-OS)
-- **Tests** : 520 passants, 0 échouants — couverture 94 %
+- **Phase** : Sprint 21 — F1 Academy (generate-f1-academy, 3 races/weekend, mapping FP3 workaround)
+- **Tests** : ~602 passants, 0 échouants — couverture ~94 %
 - **Branche** : `master`
 
 ---
@@ -65,6 +65,20 @@ motorsport_calendar/
 │   │   └── sources/
 │   │       ├── __init__.py  # ✅ source_registry.register("formula2", "f1calendar", ...)
 │   │       └── f1calendar.py # ✅ F1CalendarSource(F1CalendarBaseSource, Formula2Source) — config F2 uniquement
+│   ├── formula3/
+│   │   ├── __init__.py      # ✅ auto-register : registry.register("formula3", _make_provider)
+│   │   ├── provider.py      # Formula3Provider — délègue à Formula3Source
+│   │   ├── source.py        # Formula3Source (ABC) — get_season(year)
+│   │   └── sources/
+│   │       ├── __init__.py  # ✅ source_registry.register("formula3", "f1calendar", ...)
+│   │       └── f1calendar.py # ✅ F1CalendarSource(F1CalendarBaseSource, Formula3Source) — config F3 uniquement
+│   ├── f1_academy/
+│   │   ├── __init__.py      # ✅ auto-register : registry.register("f1-academy", _make_provider)
+│   │   ├── provider.py      # F1AcademyProvider — délègue à F1AcademySource
+│   │   ├── source.py        # F1AcademySource (ABC) — get_season(year)
+│   │   └── sources/
+│   │       ├── __init__.py  # ✅ source_registry.register("f1-academy", "f1calendar", ...)
+│   │       └── f1calendar.py # ✅ F1CalendarSource(F1CalendarBaseSource, F1AcademySource) — config F1A uniquement
 │   ├── __main__.py          # ✅ python -m motorsport_calendar — fallback quand Scripts pas dans PATH
 │   ├── support_series/      # ✅ Framework partagé F2/F3/Academy/Supercup
 │   │   ├── __init__.py      # package (non-provider)
@@ -98,7 +112,7 @@ motorsport_calendar/
 │   ├── base.py              # Exporter (ABC) — export / export_to_string
 │   └── ics.py               # ✅ IMPLÉMENTÉ — RFC 5545, 1 VEVENT par Session
 │
-├── cli.py                   # Typer CLI — generate-f1, generate-f2, generate-wec (--refresh), providers, generate, export (stub)
+├── cli.py                   # Typer CLI — generate-f1, generate-f2, generate-f3, generate-f1-academy, generate-wec (--refresh), providers, generate, export (stub)
 └── utils/logging.py         # 🔴 NON IMPLÉMENTÉ — placeholder
 ```
 
@@ -123,6 +137,8 @@ motorsport_calendar/
 15. **Formula2Provider + F1CalendarSource** — support complet FIA F2 via JSON MIT (f1calendar.com). Sessions : FP (45 min), Qualifying (30 min), Sprint Race (45 min), Feature Race (65 min). 23 circuits IANA. CLI `generate-f2 YEAR OUTPUT.ics`. Auto-inclus dans `generate`.
 16. **Support Series Framework** — `F1CalendarBaseSource(JsonDataSource, ABC)` dans `providers/support_series/f1calendar_base.py`. 4 propriétés abstraites (`_series_key`, `_session_map`, `_circuit_data`, `_make_championship`). Tout le reste hérité. F3/Academy/Supercup = ~15 lignes chacun.
 17. **Packaging v0.2.0** — `pyproject.toml` : version 0.2.0, `typer>=0.12` (plus `[all]`), `python-dateutil` supprimé, Python 3.14 classifié. `__main__.py` : `python -m motorsport_calendar` opérationnel. CI : matrix Ubuntu + macOS + Windows × Python 3.12/3.13.
+18. **Formula3Provider + F1CalendarSource** — support complet FIA F3 via JSON MIT (f1calendar.com). Sessions : Free Practice (45 min), Qualifying (30 min), Sprint Race (30 min), Feature Race (40 min). Clés dataset F3 : `practice`, `qualifying`, `sprint`, `feature` (≠ F2). 13 circuits IANA (2021-2025). CLI `generate-f3 YEAR OUTPUT.ics`. Auto-inclus dans `generate`. Couverture 2022+.
+19. **F1AcademyProvider + F1CalendarSource** — support complet F1 Academy via JSON MIT. Slug dataset : `f1-academy`. Sessions : fp1/fp2/qualifying1/[qualifying2]/race1/race2/race3. 15 circuits IANA (2023-2025). CLI `generate-f1-academy YEAR OUTPUT.ics`. Couverture 2023+. Mapping contraint (ADR-016) : race2 → FP3 pour éviter collision d'UIDs ICS sans modifier les modèles métier.
 
 ---
 
@@ -130,10 +146,10 @@ motorsport_calendar/
 
 **Prochaines tâches recommandées** (voir `docs/DATA_SOURCES.md` pour l'étude complète) :
 
-1. **`OfficialWecSource`** — scraping HTML de `fiawec.com/en/season`
+1. **`PorscheSupercupProvider`** — même pattern que F3/F1Academy, slug dataset à confirmer (probablement `porsche-supercup`)
+3. **`OfficialWecSource`** — scraping HTML de `fiawec.com/en/season`
    - Inspecter les XHR en DevTools avant d'implémenter
-2. **`ELMSSource`** — scraping `europeanlemansseries.com` (XHR d'abord, HTML sinon)
-3. **`Formula3Provider`** — même pattern que Formula 2, source à identifier
+4. **`ELMSSource`** — scraping `europeanlemansseries.com` (XHR d'abord, HTML sinon)
 
 ---
 
@@ -153,10 +169,14 @@ motorsport_calendar/
 - **config.yaml** : ignoré par git (personnel). `config.example.yaml` commité comme référence.
 - **VALARM** : `IcsExporter(alarm_minutes=N)` — N>0 → `TRIGGER:-PTNm` dans chaque VEVENT. CLI lit `config.ics.alarm_minutes`.
 - **Data Acquisition Layer (DAL)** : `core/datasource/` — `DataSource` (ABC marker), `JsonDataSource` (abstract `fetch_json(url, params)`), `HtmlDataSource` (abstract `fetch_html(url)`), `IcsDataSource` (abstract `fetch_ics(url)`). Les sources implémentent l'interface DAL de leur catégorie **en plus** de l'interface domaine (`Formula1Source`, etc.). `OpenF1Source` et `F1CalendarSource` implémentent `JsonDataSource`.
-- **F1CalendarSource** : config F2 uniquement — `_series_key="f2"`, `_SESSION_MAP`, `_CIRCUIT_DATA`, `_make_championship`. URL construite par la base : `_BASE_URL/{series_key}/{year}.json`. `event_uid = f"f1calendar-{series_key}-{year}-{round}@motorsport-calendar"`. Pas de wrapper `_get_json` (aucun legacy mock).
+- **F1CalendarSource (F2)** : config F2 uniquement — `_series_key="f2"`, sessions : `fp1/qualifying/sprintRace/feature`. `_CIRCUIT_DATA` : 23 circuits. Module-level backward-compat functions conservées (importées directement par `test_f1calendar_source.py`).
+- **F1CalendarSource (F3)** : config F3 uniquement — `_series_key="f3"`, sessions : `practice/qualifying/sprint/feature` (clés différentes de F2). `_CIRCUIT_DATA` : 13 circuits (subset F1 européen + Bahreïn + Melbourne). Pas de fonctions module-level (F3 n'a pas de tests hérités). URL construite par la base : `_BASE_URL/{series_key}/{year}.json`. `event_uid = f"f1calendar-{series_key}-{year}-{round}@motorsport-calendar"`.
+- **F1CalendarSource (F1 Academy)** : config F1A uniquement — `_series_key="f1-academy"`, sessions : `fp1/fp2/qualifying1/qualifying2/race1/race2/race3`. `_CIRCUIT_DATA` : 15 circuits (2023-2025). Mapping contraint : `race2 → FP3` workaround ADR-016. Package Python : `f1_academy` (underscore), championship ID : `"f1-academy"` (tiret). `qualifying2` optionnel (absent en 2025+).
+- **test_cli_generate.py — imports disambiguïsés** : F1Academy importée comme `F1AcademyCalendarSource`, mockée dans `test_all_providers_fail_*`.
 - **F1CalendarBaseSource** : dans `providers/support_series/f1calendar_base.py`. `__init__(client, cache, *, refresh)`, `get_season(year)`, `fetch_json(url, params)`, `_resolve_circuit_data(slug)`, `_build_circuit(event_data)`, `_build_event(championship, event_data, year)`. `_build_session(timestamp, type, duration, title)` = fonction module-level pure.
-- **Mock pour tests support series** : `patch.object(F1CalendarSource, "fetch_json", AsyncMock(return_value=...))` — fonctionne même si `fetch_json` est hérité de la base (patch sur la sous-classe).
+- **Mock pour tests support series** : `patch.object(F1CalendarSource, "fetch_json", AsyncMock(return_value=...))` — fonctionne même si `fetch_json` est hérité de la base (patch sur la sous-classe). Pour F3 : `patch("motorsport_calendar.providers.formula3.sources.f1calendar.F1CalendarSource.fetch_json", ...)`.
 - **HttpCache mock** : depuis Sprint 18, patcher `"motorsport_calendar.providers.support_series.f1calendar_base.HttpCache"` (et non plus `f1calendar.HttpCache`).
+- **test_cli_generate.py — imports disambiguïsés** : F2 importée comme `F2CalendarSource`, F3 comme `F3CalendarSource` pour éviter les conflits de noms dans les tests "tout échoue". Les deux sont mockées dans `test_all_providers_fail_*`.
 - **Ajouter un support series** (F3, Academy, Supercup) : créer `providers/XYZ/` avec source héritant de `F1CalendarBaseSource` — 4 overrides, ~15 lignes. Même pattern que `F1CalendarSource`.
 - **JolpicaSource** : endpoint `http://api.jolpi.ca/ergast/f1/{year}/races.json?limit=100`. Requête unique par saison. Sessions extraites des champs `FirstPractice`, `SecondPractice`, `ThirdPractice`, `Qualifying`, `SprintQualifying`, `Sprint` + champ race (`date`+`time` au top level). Durées inférées : FP 60 min, Qualifying 60 min, SprintQualifying 45 min, Sprint 35 min, Race 130 min. `circuitId` snake_case → IANA timezone. Fallback noon UTC si `time` absent (pré-2000). Enregistrée sous `"jolpica"` dans SourceRegistry.
 - **ErgastSource** : alias backward-compat pour `JolpicaSource` (Ergast arrêté fin 2024). Non enregistrée dans SourceRegistry — utiliser `source: jolpica` dans config.yaml.

@@ -22,6 +22,12 @@ motocal generate-f1 2026 f1-2026.ics
 # Formula 2 — 2026 season
 motocal generate-f2 2026 f2-2026.ics
 
+# Formula 3 — 2026 season
+motocal generate-f3 2026 f3-2026.ics
+
+# F1 Academy — 2025 season
+motocal generate-f1-academy 2025 f1a-2025.ics
+
 # All enabled championships in one file
 motocal generate 2026 motorsport-2026.ics
 ```
@@ -36,6 +42,8 @@ practice appears automatically with the correct local time.
 - **ICS export** — one VEVENT per session, compatible with every major calendar app
 - **Formula 1** — via [OpenF1](https://openf1.org) (2023+) or [Jolpica](https://jolpi.ca) (1950+)
 - **Formula 2** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT)
+- **Formula 3** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT, 2022+)
+- **F1 Academy** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT, 2023+)
 - **Extensible architecture** — add a new series in a few files, zero changes elsewhere
 - **HTTP cache** — disk-based JSON cache with configurable TTL; skip with `--refresh`
 - **YAML configuration** — sources, cache path, alarm reminders, opt-out per championship
@@ -111,6 +119,19 @@ motocal generate-f2 2026 f2-2026.ics
 motocal generate-f2 2026 f2-2026.ics --refresh
 ```
 
+### Formula 3
+
+```bash
+# 2026 FIA Formula 3 Championship
+motocal generate-f3 2026 f3-2026.ics
+
+# Force re-download
+motocal generate-f3 2026 f3-2026.ics --refresh
+```
+
+> **Note:** The f1calendar dataset covers F3 from 2022 onwards. Seasons prior to 2022
+> used different session keys (`race1`/`race2`/`race3`) which are not mapped.
+
 ### WEC — FIA World Endurance Championship
 
 ```bash
@@ -134,9 +155,10 @@ A per-provider summary is displayed:
 Génération calendrier 2026 — 3 providers activés…
   ✓ formula1 : 24 événements
   ✓ formula2 : 14 événements
+  ✓ formula3 : 10 événements
   ✗ wec : source non implémentée
 
-Export terminé : motorsport-2026.ics (38 événements, 152 sessions)
+Export terminé : motorsport-2026.ics (48 événements, 182 sessions)
 ```
 
 ### Other commands
@@ -235,10 +257,10 @@ no hardcoded lists anywhere.
 | Formula 1 (recent) | ✅ Available | [openf1.org](https://openf1.org) | 2023 → present |
 | Formula 1 (historical) | ✅ Available | [jolpi.ca](https://jolpi.ca) (Ergast successor) | 1950 → present |
 | Formula 2 | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | Recent seasons |
+| Formula 3 | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | 2022 → present |
+| F1 Academy | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | 2023 → present |
 | WEC | 🟡 Architecture ready | fiawec.com (TODO) | Roadmap |
-| Formula 3 | 🟡 In progress | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | Sprint 19 |
-| F1 Academy | 🟡 Planned | f1calendar dataset | Sprint 20 |
-| Porsche Supercup | 🟡 Planned | f1calendar dataset | Sprint 21 |
+| Porsche Supercup | 🟡 Planned | f1calendar dataset | Sprint 22 |
 | ELMS | 🔴 Planned | TBD | Future |
 
 ---
@@ -249,7 +271,7 @@ no hardcoded lists anywhere.
 |---|---|
 | **v0.1** ✅ | Formula 1 via OpenF1, WEC architecture, multi-provider CLI, cache, config |
 | **v0.2** ✅ | Formula 2 ✅, JolpicaSource ✅, Data Acquisition Layer ✅, Support Series Framework ✅ |
-| **v0.3** 🚧 | Formula 3, F1 Academy, Porsche Supercup, OfficialWecSource |
+| **v0.3** 🚧 | Formula 3 ✅, F1 Academy ✅, Porsche Supercup, OfficialWecSource |
 | **v1.0** | PyPI release, MkDocs documentation, stable public API |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the detailed per-version breakdown.
@@ -281,16 +303,16 @@ Support series share the [f1calendar open dataset](https://github.com/sportstime
 Subclass `F1CalendarBaseSource` — only four overrides needed:
 
 ```python
-# providers/formula3/sources/f1calendar.py
+# providers/formula3/sources/f1calendar.py  ← already implemented in v0.3
 from motorsport_calendar.providers.support_series.f1calendar_base import F1CalendarBaseSource
 from motorsport_calendar.providers.formula3.source import Formula3Source
 from motorsport_calendar.models import Championship, ChampionshipCategory, SessionType
 
 _SESSION_MAP = {
-    "fp1":       (SessionType.FP1,        45, "Free Practice"),
+    "practice":   (SessionType.FP1,        45, "Free Practice"),
     "qualifying": (SessionType.QUALIFYING, 30, "Qualifying"),
-    "sprintRace": (SessionType.SPRINT,    45, "Sprint Race"),
-    "feature":   (SessionType.RACE,       65, "Feature Race"),
+    "sprint":     (SessionType.SPRINT,     30, "Sprint Race"),
+    "feature":    (SessionType.RACE,       40, "Feature Race"),
 }
 _CIRCUIT_DATA = { ... }  # slug → (country, IANA timezone)
 

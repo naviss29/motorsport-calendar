@@ -286,6 +286,75 @@ Raisons du choix :
 
 ---
 
+## ADR-016 — F1 Academy : mapping SessionType contraint par l'absence de RACE2/RACE3
+
+**Contexte**
+F1 Academy court un format à trois courses par week-end (`race1`, `race2`, `race3`) depuis 2023.
+Le format est le suivant :
+- `fp1` / `fp2` : deux séances d'entraînement
+- `qualifying1` (et `qualifying2` en 2023-2024) : qualifications
+- `race1` / `race2` : courses sprint (~30 min chacune)
+- `race3` : course principale (~30 min)
+
+Le problème : `SessionType` ne possède pas de valeurs `RACE2` / `RACE3`. Si `race1`, `race2`
+et `race3` sont tous mappés à `SessionType.RACE`, l'ICS généré contiendra trois VEVENTs
+avec le même UID (`event_uid-RACE`) — ce qui viole RFC 5545 et provoque des collisions
+dans les clients calendrier (un seul event visible sur trois).
+
+**Décision**
+Contrainte du sprint : "Aucun changement des modèles métier" → on ne peut pas ajouter
+`RACE2`/`RACE3` à l'enum `SessionType`.
+
+Mapping retenu pour garantir l'unicité des UIDs :
+- `race1` → `SessionType.SPRINT`   "Race 1"  (sprint = course courte ✓)
+- `race2` → `SessionType.FP3`      "Race 2"  (workaround — FP3 = type disponible non utilisé ailleurs)
+- `race3` → `SessionType.RACE`     "Race 3"  (course principale ✓)
+
+Le champ `title` affiché dans le calendrier est correct ("Race 1", "Race 2", "Race 3").
+Le `type` FP3 n'est visible qu'en interne (logs, filtrage programmatique).
+
+**Conséquences**
+- Aucun UID en collision — calendrier RFC 5545 valide. ✓
+- Les titres des sessions sont corrects pour l'utilisateur final. ✓
+- Le type FP3 pour "Race 2" est sémantiquement incorrect — confusant pour les développeurs
+  qui filtrent par `session.type == SessionType.FP3`.
+- **Recommandation pour une prochaine version** : ajouter `RACE2 = "RACE2"` et
+  `RACE3 = "RACE3"` à `SessionType` (changement purement additif, zéro régression),
+  puis mettre à jour ce mapping.
+
+---
+
+## ADR-015 — Formula 3 : source f1calendar.com JSON, clés de sessions différentes de F2
+
+**Contexte**
+Le dataset `sportstimes/f1` couvre aussi F3 avec le même pattern d'URL
+(`_db/f3/{year}.json`) et la même licence MIT. La question était de savoir si
+les clés de sessions F3 sont identiques à celles de F2.
+
+**Décision**
+Utiliser `https://raw.githubusercontent.com/sportstimes/f1/main/_db/f3/{year}.json`
+comme source primaire via `F1CalendarSource(F1CalendarBaseSource, Formula3Source)`.
+
+Les clés de sessions F3 confirmées (2022-2025) différent de F2 sur deux points :
+- `"practice"` (F3) au lieu de `"fp1"` (F2) → `SessionType.FP1`, 45 min
+- `"sprint"` (F3) au lieu de `"sprintRace"` (F2) → `SessionType.SPRINT`, 30 min
+- `"qualifying"` identique → `SessionType.QUALIFYING`, 30 min
+- `"feature"` identique → `SessionType.RACE`, 40 min (vs 65 min pour F2)
+
+Les saisons antérieures à 2022 utilisaient `"race1"/"race2"/"race3"` — ces sessions
+ne sont pas mappées et sont silencieusement ignorées.
+
+F3 ne couvre que les circuits F1 européens + Bahreïn + Melbourne (13 slugs connus).
+
+**Conséquences**
+- `F3CalendarSource` : uniquement `_series_key`, `_session_map`, `_circuit_data`,
+  `_make_championship` — 4 overrides, ~50 lignes en tout (dont 13 entrées circuit).
+- Aucune fonction module-level de backward-compat (F3 n'a pas de tests hérités qui
+  importent directement ces helpers).
+- Mutualisation : ~85 % de la logique héritée de `F1CalendarBaseSource`.
+
+---
+
 ## ADR-010 — VALARM dans IcsExporter via `alarm_minutes`
 
 **Contexte**

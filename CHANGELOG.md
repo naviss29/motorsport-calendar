@@ -7,6 +7,46 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint 21
+
+### Added
+
+- **F1 Academy provider** — `motocal generate-f1-academy YEAR OUTPUT.ics` génère le calendrier F1 Academy complet.
+  - `F1AcademyProvider` + `F1AcademySource` (ABC) — même architecture que F1/F2/F3/WEC.
+  - `F1CalendarSource(F1CalendarBaseSource, F1AcademySource)` — ~60 lignes, 4 overrides uniquement.
+    Source : `https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1-academy/{year}.json` (MIT).
+    Sessions : Free Practice 1 (45 min), Free Practice 2 (30 min), Qualifying 1/2 (30 min),
+    Race 1 (30 min), Race 2 (30 min), Race 3 (30 min). 15 circuits avec fuseaux IANA.
+  - Format de sessions propre à F1 Academy : `fp1`, `fp2`, `qualifying1`, `qualifying2` (2023-2024),
+    `race1`, `race2`, `race3`. `qualifying2` absent en 2025+.
+  - Couverture : 2023 → présent.
+  - Auto-inclus dans `motocal generate` (opt-out via `config.yaml`).
+  - `config.example.yaml` mis à jour avec la section `f1-academy`.
+  - ADR-016 : mapping `race2 → FP3` pour garantir l'unicité des UIDs ICS sans modifier
+    les modèles métier. Recommandation : ajouter `RACE2`/`RACE3` à `SessionType` dans v0.4.
+  - 41 nouveaux tests (F1AcademyProvider : 13, CLI generate-f1-academy : 28).
+
+---
+
+## [Unreleased] — Sprint 20
+
+### Added
+
+- **Formula 3 provider** — `motocal generate-f3 YEAR OUTPUT.ics` génère le calendrier FIA F3 complet.
+  - `Formula3Provider` + `Formula3Source` (ABC) — même architecture que F1/F2/WEC.
+  - `F1CalendarSource(F1CalendarBaseSource, Formula3Source)` — ~50 lignes, 4 overrides uniquement.
+    Source : `https://raw.githubusercontent.com/sportstimes/f1/main/_db/f3/{year}.json` (MIT).
+    Sessions mappées : Free Practice (45 min), Qualifying (30 min), Sprint Race (30 min),
+    Feature Race (40 min). Clés dataset F3 : `practice`, `qualifying`, `sprint`, `feature`
+    (diffèrent de F2). 13 circuits avec fuseaux IANA (couverts 2021-2025).
+  - Couverture : 2022 → présent (avant 2022, les sessions `race1/race2/race3` sont ignorées).
+  - Auto-inclus dans `motocal generate` (opt-out via `config.yaml`).
+  - Enregistré sous `source: f1calendar` dans `config.yaml`.
+  - `config.example.yaml` mis à jour avec la section `formula3`.
+  - 36 nouveaux tests (Formula3Provider : 12, CLI generate-f3 : 24).
+
+---
+
 ## [0.2.0] — 2026-07-05
 
 ### Fixed

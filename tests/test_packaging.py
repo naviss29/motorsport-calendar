@@ -119,6 +119,14 @@ class TestCLICommands:
         result = runner.invoke(app, ["--help"])
         assert "generate-f2" in result.output
 
+    def test_help_shows_generate_f3(self) -> None:
+        result = runner.invoke(app, ["--help"])
+        assert "generate-f3" in result.output
+
+    def test_help_shows_generate_f1_academy(self) -> None:
+        result = runner.invoke(app, ["--help"])
+        assert "generate-f1-academy" in result.output
+
     def test_help_shows_generate_wec(self) -> None:
         result = runner.invoke(app, ["--help"])
         assert "generate-wec" in result.output
@@ -148,6 +156,14 @@ class TestCLICommands:
     def test_providers_command_lists_formula2(self) -> None:
         result = runner.invoke(app, ["providers"])
         assert "formula2" in result.output
+
+    def test_providers_command_lists_formula3(self) -> None:
+        result = runner.invoke(app, ["providers"])
+        assert "formula3" in result.output
+
+    def test_providers_command_lists_f1_academy(self) -> None:
+        result = runner.invoke(app, ["providers"])
+        assert "f1-academy" in result.output
 
     def test_providers_command_lists_wec(self) -> None:
         result = runner.invoke(app, ["providers"])
@@ -203,6 +219,16 @@ class TestPublicImports:
         assert Formula2Provider is not None
         assert Formula2Source is not None
 
+    def test_formula3_provider_importable(self) -> None:
+        from motorsport_calendar.providers.formula3 import Formula3Provider, Formula3Source
+        assert Formula3Provider is not None
+        assert Formula3Source is not None
+
+    def test_f1_academy_provider_importable(self) -> None:
+        from motorsport_calendar.providers.f1_academy import F1AcademyProvider, F1AcademySource
+        assert F1AcademyProvider is not None
+        assert F1AcademySource is not None
+
     def test_support_series_base_importable(self) -> None:
         from motorsport_calendar.providers.support_series.f1calendar_base import F1CalendarBaseSource
         assert F1CalendarBaseSource is not None
@@ -243,6 +269,16 @@ class TestRegistryDiscovery:
         registry.discover()
         assert "formula2" in registry.list_all()
 
+    def test_discover_registers_formula3(self) -> None:
+        from motorsport_calendar.core.registry import registry
+        registry.discover()
+        assert "formula3" in registry.list_all()
+
+    def test_discover_registers_f1_academy(self) -> None:
+        from motorsport_calendar.core.registry import registry
+        registry.discover()
+        assert "f1-academy" in registry.list_all()
+
     def test_discover_registers_wec(self) -> None:
         from motorsport_calendar.core.registry import registry
         registry.discover()
@@ -258,7 +294,17 @@ class TestRegistryDiscovery:
         source_registry.discover()
         assert "jolpica" in source_registry.list_for("formula1")
 
-    def test_source_discover_registers_f1calendar(self) -> None:
+    def test_source_discover_registers_f1calendar_formula2(self) -> None:
         from motorsport_calendar.core.source_registry import source_registry
         source_registry.discover()
         assert "f1calendar" in source_registry.list_for("formula2")
+
+    def test_source_discover_registers_f1calendar_formula3(self) -> None:
+        from motorsport_calendar.core.source_registry import source_registry
+        source_registry.discover()
+        assert "f1calendar" in source_registry.list_for("formula3")
+
+    def test_source_discover_registers_f1calendar_f1_academy(self) -> None:
+        from motorsport_calendar.core.source_registry import source_registry
+        source_registry.discover()
+        assert "f1calendar" in source_registry.list_for("f1-academy")
