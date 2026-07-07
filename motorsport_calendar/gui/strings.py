@@ -31,6 +31,23 @@ class Strings:
     generate_btn: str = "Créer mon calendrier"
     generating_status: str = "Création du calendrier en cours…"
 
+    # Calendar wizard (Sprint 26 — Release Alpha Phase 2)
+    # Sprint 28: the per-step "Étape N — ..." title + help text were dropped —
+    # the step indicator (pastilles) is enough on its own.
+    wizard_step_season: str = "Saison"
+    wizard_step_championships: str = "Championnats"
+    wizard_step_destination: str = "Destination"
+    wizard_step_create: str = "Créer"
+
+    wizard_back_btn: str = "Précédent"
+    wizard_next_btn: str = "Suivant"
+    wizard_edit_btn: str = "Modifier"
+
+    wizard_recap_season: str = "Saison"
+    wizard_recap_championships: str = "Championnats"
+    wizard_recap_destination: str = "Fichier de destination"
+    wizard_recap_none: str = "Non renseigné"
+
     # Success dialog
     success_title: str = "Calendrier créé avec succès"
     success_saved_at: str = "Enregistré dans :"
@@ -56,14 +73,14 @@ class Strings:
     nav_home: str = "Accueil"
     nav_calendar: str = "Calendrier"
 
-    # Weekend screen
-    weekend_empty_title: str = "Aucune course ce week-end"
-    weekend_coming_soon: str = "Cette fonctionnalité arrivera prochainement."
-    weekend_section_championship: str = "Championnat"
-    weekend_section_circuit: str = "Circuit"
-    weekend_section_country: str = "Pays"
-    weekend_section_sessions: str = "Sessions"
-    weekend_layout_preview: str = "Aperçu du layout à venir"
+    # Weekend screen (Sprint 29 — version fonctionnelle)
+    weekend_loading: str = "Chargement..."
+    weekend_empty_title: str = "Aucune course ce week-end."
+    weekend_next_hint: str = "Prochain week-end disponible le {date}."
+
+    # Event display normalization (Sprint 32) — last-resort fallback when a
+    # provider gives no event name at all (see gui/event_display.py).
+    event_name_fallback: str = "Événement"
 
     # Favorites screen
     favorites_empty: str = "Vous pourrez bientôt retrouver ici vos championnats favoris."

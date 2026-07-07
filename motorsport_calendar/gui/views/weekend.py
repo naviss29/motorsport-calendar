@@ -1,97 +1,87 @@
-"""🏁 Ce week-end — placeholder view.
+"""🏁 Ce week-end — version fonctionnelle (Sprint 29), Layout System (Sprint 31).
 
-Layout skeleton for the upcoming race-weekend overview feature.
-No data fetching in this version — structure only.
+Renders one of exactly 3 states, driven by main_view.py:
+  - loading  : ``build_weekend_view(None)``            — "Chargement..."
+  - empty    : ``build_weekend_view(WeekendResult(found=False, ...))``
+  - found    : ``build_weekend_view(WeekendResult(found=True, ...))``
+
+Pure layout — fetching and finding the next race weekend lives in
+``controller.get_upcoming_weekend`` / ``upcoming_weekend.py``. Every state
+is composed from the Layout System (``PageContainer``/``PageHeader``/
+``Section``/``CardList``/``EmptyState``) — this view builds no container,
+padding, header, or card layout of its own.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import flet as ft
 
+from motorsport_calendar.gui import theme
+from motorsport_calendar.gui.components.championship_card import build_championship_card
+from motorsport_calendar.gui.components.layout import (
+    CardList,
+    EmptyState,
+    PageContainer,
+    PageHeader,
+    Section,
+)
 from motorsport_calendar.gui.strings import STRINGS
 
+if TYPE_CHECKING:
+    from motorsport_calendar.gui.upcoming_weekend import WeekendResult
 
-def _placeholder_race_card() -> ft.Control:
-    """Visual skeleton of a future race card (no live data)."""
+_HEADER_ICON = ft.Icons.SPORTS_MOTORSPORTS
 
-    def _row(icon: ft.IconData, label: str) -> ft.Control:
-        return ft.Row(
+
+def _loading_state() -> ft.Control:
+    loading_card = theme.card(
+        ft.Row(
             [
-                ft.Icon(icon, size=16, color=ft.Colors.WHITE38),
-                ft.Text(label, size=13, color=ft.Colors.WHITE38, italic=True),
+                ft.ProgressRing(width=16, height=16),
+                ft.Text(
+                    STRINGS.weekend_loading,
+                    size=theme.FontSize.BODY,
+                    color=theme.Colors.TEXT_SECONDARY,
+                ),
             ],
-            spacing=8,
+            spacing=theme.Spacing.SM,
         )
-
-    return ft.Container(
-        content=ft.Column(
-            controls=[
-                ft.Row(
-                    [
-                        ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=18, color=ft.Colors.WHITE30),
-                        ft.Text(
-                            STRINGS.weekend_layout_preview,
-                            size=12,
-                            color=ft.Colors.WHITE30,
-                            weight=ft.FontWeight.W_500,
-                        ),
-                    ],
-                    spacing=6,
-                ),
-                ft.Divider(height=8, color=ft.Colors.WHITE12),
-                _row(ft.Icons.EMOJI_EVENTS_OUTLINED, STRINGS.weekend_section_championship),
-                _row(ft.Icons.STADIUM_OUTLINED, STRINGS.weekend_section_circuit),
-                _row(ft.Icons.FLAG_OUTLINED, STRINGS.weekend_section_country),
-                ft.Divider(height=8, color=ft.Colors.WHITE12),
-                ft.Text(
-                    STRINGS.weekend_section_sessions,
-                    size=12,
-                    color=ft.Colors.WHITE30,
-                    weight=ft.FontWeight.W_500,
-                ),
-                _row(ft.Icons.SCHEDULE_OUTLINED, "— : —  ·  —"),
-                _row(ft.Icons.SCHEDULE_OUTLINED, "— : —  ·  —"),
-            ],
-            spacing=6,
-        ),
-        padding=ft.Padding.all(16),
-        border_radius=8,
-        border=ft.Border.all(1, ft.Colors.WHITE12),
-        width=320,
+    )
+    return PageContainer(
+        header=PageHeader(STRINGS.nav_weekend, icon=_HEADER_ICON),
+        body=[Section(loading_card)],
     )
 
 
-def build_weekend_view() -> ft.Control:
-    """Return the Ce week-end placeholder view."""
-    return ft.Container(
-        content=ft.Column(
-            controls=[
-                ft.Row(
-                    [ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=48, color=ft.Colors.WHITE30)],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-                ft.Text(
-                    STRINGS.weekend_empty_title,
-                    size=20,
-                    weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.CENTER,
-                    color=ft.Colors.WHITE70,
-                ),
-                ft.Text(
-                    STRINGS.weekend_coming_soon,
-                    size=13,
-                    color=ft.Colors.WHITE38,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                ft.Container(height=24),
-                ft.Row(
-                    [_placeholder_race_card()],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=8,
-        ),
-        expand=True,
-        padding=ft.Padding.all(32),
-        alignment=ft.Alignment.TOP_CENTER,
+def _empty_state(result: WeekendResult) -> ft.Control:
+    message = None
+    if result.next_hint_date is not None:
+        message = STRINGS.weekend_next_hint.format(date=f"{result.next_hint_date:%d/%m}")
+    return PageContainer(
+        header=PageHeader(STRINGS.nav_weekend, icon=_HEADER_ICON),
+        body=[Section(EmptyState(STRINGS.weekend_empty_title, message=message))],
     )
+
+
+def _found_state(result: WeekendResult) -> ft.Control:
+    subtitle = f"{result.friday:%d/%m} - {result.sunday:%d/%m}"
+    cards = [build_championship_card(card) for card in result.cards]
+    return PageContainer(
+        header=PageHeader(STRINGS.nav_weekend, icon=_HEADER_ICON, subtitle=subtitle),
+        body=[Section(CardList(cards))],
+    )
+
+
+def build_weekend_view(result: WeekendResult | None = None) -> ft.Control:
+    """Return the Ce week-end view for exactly one of the 3 states.
+
+    Args:
+        result: ``None`` while the fetch is in flight (loading state),
+            otherwise the outcome of ``controller.get_upcoming_weekend``.
+    """
+    if result is None:
+        return _loading_state()
+    if not result.found:
+        return _empty_state(result)
+    return _found_state(result)

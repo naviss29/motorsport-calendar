@@ -2,11 +2,19 @@
 
 Displays the full preference structure without any active controls.
 Each row is a preview of a future setting backed by PreferencesModel.
+
+Sprint 31: composed from the Layout System — ``PageContainer``/``PageHeader``
+put the page's own title above the content again (rather than absorbed
+into a single card, per Sprint 28), and the rows are a ``CardList``: each
+row is its own small bordered card, which no longer risks a double border
+now that there is no single outer card wrapping the whole list.
 """
 from __future__ import annotations
 
 import flet as ft
 
+from motorsport_calendar.gui import theme
+from motorsport_calendar.gui.components.layout import CardList, PageContainer, PageHeader, Section
 from motorsport_calendar.gui.models import PreferencesModel
 from motorsport_calendar.gui.strings import STRINGS
 
@@ -21,38 +29,27 @@ _PREF_ROWS: list[tuple[ft.IconData, str, str]] = [
 ]
 
 
-def _coming_soon_chip() -> ft.Control:
-    return ft.Container(
-        content=ft.Text(
-            STRINGS.prefs_coming_soon,
-            size=11,
-            color=ft.Colors.WHITE38,
-        ),
-        padding=ft.Padding.symmetric(horizontal=8, vertical=3),
-        border_radius=12,
-        border=ft.Border.all(1, ft.Colors.WHITE12),
-    )
-
-
 def _pref_row(icon: ft.IconData, label: str) -> ft.Control:
-    return ft.Container(
-        content=ft.Row(
+    return theme.card(
+        ft.Row(
             controls=[
-                ft.Icon(icon, size=20, color=ft.Colors.WHITE54),
-                ft.Text(label, size=13, color=ft.Colors.WHITE70, expand=True),
-                _coming_soon_chip(),
+                ft.Icon(icon, size=theme.IconSize.MD, color=theme.Colors.TEXT_MUTED),
+                ft.Text(
+                    label,
+                    size=theme.FontSize.BODY,
+                    color=theme.Colors.TEXT_SECONDARY,
+                    expand=True,
+                ),
+                theme.chip(STRINGS.prefs_coming_soon),
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=12,
-        ),
-        padding=ft.Padding.symmetric(horizontal=16, vertical=12),
-        border_radius=8,
-        border=ft.Border.all(1, ft.Colors.WHITE12),
+            spacing=theme.Spacing.SM,
+        )
     )
 
 
 def build_preferences_view(model: PreferencesModel | None = None) -> ft.Control:
-    """Return the Préférences placeholder view.
+    """Return the Préférences placeholder view, through the Layout System.
 
     Args:
         model: current preferences (unused for now — displayed when settings become active).
@@ -61,27 +58,7 @@ def build_preferences_view(model: PreferencesModel | None = None) -> ft.Control:
 
     rows = [_pref_row(icon, label) for icon, label, _ in _PREF_ROWS]
 
-    return ft.Container(
-        content=ft.Column(
-            controls=[
-                ft.Row(
-                    [
-                        ft.Icon(ft.Icons.SETTINGS, size=24, color=ft.Colors.WHITE70),
-                        ft.Text(
-                            STRINGS.prefs_title,
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                    ],
-                    spacing=10,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                ft.Divider(height=16),
-                ft.Column(controls=rows, spacing=8),
-            ],
-            spacing=8,
-            scroll=ft.ScrollMode.AUTO,
-        ),
-        expand=True,
-        padding=ft.Padding.symmetric(vertical=24, horizontal=28),
+    return PageContainer(
+        header=PageHeader(STRINGS.prefs_title, icon=ft.Icons.SETTINGS),
+        body=[Section(CardList(rows))],
     )

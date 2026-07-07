@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
-from motorsport_calendar.gui.controller import generate_calendar, list_championships
+from motorsport_calendar.gui.controller import (
+    generate_calendar,
+    get_upcoming_weekend,
+    list_championships,
+)
+from motorsport_calendar.models import (
+    Championship,
+    ChampionshipCategory,
+    Circuit,
+    Event,
+    Session,
+    SessionType,
+)
 
 # ---------------------------------------------------------------------------
 # Minimal F2 fixture — 1 event, 4 sessions (2024 keys)
@@ -246,3 +260,161 @@ class TestGenerateCalendarErrors:
         assert isinstance(result.get("formula2"), tuple)
         assert isinstance(result.get("wec"), str)
         assert output.exists()
+
+
+# ---------------------------------------------------------------------------
+# TestGetUpcomingWeekend
+# ---------------------------------------------------------------------------
+
+# Non-WEC "Ce week-end" sources, one per championship — mocked at the
+# get_season() level (Provider.fetch_events delegates straight to it), so
+# no raw JSON fixtures are needed. WEC's OfficialWecSource always raises
+# NotImplementedError for real — no mock required, matches production.
+_WEEKEND_SOURCE_PATHS = {
+    # ProvidersConfig defaults formula1 to the "openf1" source (see
+    # config/models.py) — not the first-registered "jolpica" — mock that
+    # one to match what get_upcoming_weekend actually calls.
+    "formula1": "motorsport_calendar.providers.formula1.sources.openf1.OpenF1Source.get_season",
+    "formula2": (
+        "motorsport_calendar.providers.formula2.sources.f1calendar.F1CalendarSource.get_season"
+    ),
+    "formula3": (
+        "motorsport_calendar.providers.formula3.sources.f1calendar.F1CalendarSource.get_season"
+    ),
+    "f1-academy": (
+        "motorsport_calendar.providers.f1_academy.sources.f1calendar.F1CalendarSource.get_season"
+    ),
+}
+
+
+@contextmanager
+def patch_weekend_sources(events_by_championship: dict[str, list[Event]] | None = None):
+    """Patch get_season() for the 4 non-WEC weekend championships.
+
+    Each championship is fetched for 2 years (now.year and now.year + 1) —
+    the mock only returns events whose season matches the requested year,
+    so a fixture built for one year doesn't get double-counted on the
+    second fetch call.
+    """
+    events_by_championship = events_by_championship or {}
+
+    def _get_season_for(cid: str):
+        async def _get_season(year: int) -> list[Event]:
+            return [e for e in events_by_championship.get(cid, []) if e.season == year]
+
+        return _get_season
+
+    with ExitStack() as stack:
+        for cid, target in _WEEKEND_SOURCE_PATHS.items():
+            stack.enter_context(patch(target, side_effect=_get_season_for(cid)))
+        yield
+
+
+def _weekend_session(session_type: SessionType, start: datetime) -> Session:
+    return Session(
+        type=session_type,
+        start_datetime=start,
+        end_datetime=start + timedelta(hours=1),
+        title=session_type.value,
+    )
+
+
+def _weekend_event(championship_id: str, *, start: datetime) -> Event:
+    championship = Championship(
+        id=championship_id, name=championship_id, category=ChampionshipCategory.SINGLE_SEATER
+    )
+    circuit = Circuit(
+        id="test-circuit", name="Test Circuit", city="Test", country="France",
+        timezone="Europe/Paris",
+    )
+    return Event(
+        championship=championship,
+        season=start.year,
+        round=1,
+        name="Test Grand Prix",
+        circuit=circuit,
+        sessions=(_weekend_session(SessionType.RACE, start),),
+        event_uid=f"{championship_id}-1@test",
+    )
+
+
+# A Tuesday — the upcoming weekend is Friday 2026-07-10 to Sunday 2026-07-12.
+_WEEKEND_NOW = datetime(2026, 7, 7, 12, 0, tzinfo=UTC)
+
+
+class TestGetUpcomingWeekend:
+    async def test_no_data_anywhere_returns_not_found(self) -> None:
+        with patch_weekend_sources():
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is False
+
+    async def test_formula1_event_this_weekend_is_found(self) -> None:
+        event = _weekend_event("formula1", start=datetime(2026, 7, 12, 13, 0, tzinfo=UTC))
+        with patch_weekend_sources({"formula1": [event]}):
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is True
+        assert len(result.cards) == 1
+        assert result.cards[0].championship_id == "formula1"
+
+    async def test_wec_not_implemented_does_not_crash_the_whole_call(self) -> None:
+        """WEC's real source always raises NotImplementedError — the other
+        4 championships must still be attempted and the call must not raise.
+        """
+        with patch_weekend_sources():
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is False  # nothing mocked in — but no crash
+
+    async def test_partial_provider_failure_does_not_crash(self) -> None:
+        event = _weekend_event("formula2", start=datetime(2026, 7, 11, 9, 0, tzinfo=UTC))
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    _WEEKEND_SOURCE_PATHS["formula1"],
+                    AsyncMock(side_effect=httpx.TimeoutException("timeout")),
+                )
+            )
+            stack.enter_context(
+                patch(_WEEKEND_SOURCE_PATHS["formula2"], AsyncMock(return_value=[event]))
+            )
+            stack.enter_context(
+                patch(_WEEKEND_SOURCE_PATHS["formula3"], AsyncMock(return_value=[]))
+            )
+            stack.enter_context(
+                patch(_WEEKEND_SOURCE_PATHS["f1-academy"], AsyncMock(return_value=[]))
+            )
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is True
+        assert result.cards[0].championship_id == "formula2"
+
+    async def test_now_override_controls_which_weekend_is_searched(self) -> None:
+        event = _weekend_event("formula1", start=datetime(2026, 8, 15, 13, 0, tzinfo=UTC))
+        with patch_weekend_sources({"formula1": [event]}):
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is True
+        assert result.friday.isoformat() == "2026-08-14"
+        assert result.sunday.isoformat() == "2026-08-16"
+
+    async def test_default_now_is_used_when_omitted(self) -> None:
+        """Calling without `now` must not raise — it defaults to the real
+        current time internally. With every source mocked empty, there is
+        nothing to find regardless of what "now" resolves to."""
+        with patch_weekend_sources():
+            result = await get_upcoming_weekend()
+        assert result.found is False
+
+    async def test_championship_with_no_registered_source_is_skipped(self) -> None:
+        from motorsport_calendar.core.source_registry import source_registry
+
+        with (
+            patch_weekend_sources(),
+            patch.object(source_registry, "list_for", return_value=[]),
+        ):
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is False
+
+    async def test_championship_with_unregistered_provider_is_skipped(self) -> None:
+        from motorsport_calendar.core.registry import registry
+
+        with patch_weekend_sources(), patch.object(registry, "get", side_effect=KeyError("x")):
+            result = await get_upcoming_weekend(now=_WEEKEND_NOW)
+        assert result.found is False

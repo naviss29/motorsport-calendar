@@ -2,6 +2,307 @@
 
 ---
 
+## ADR-024 — `gui/championship_assets.py` : registre central des identités visuelles
+
+**Contexte**
+Sprint 33. Objectif : afficher le logo officiel de chaque championnat à gauche du titre
+dans `ChampionshipCard`, sans coder de chemin de fichier dans une vue ni de branche
+`if championship_id == "formula1"` dans le composant. Recherche préalable (dans
+`motorsport-calendar` et `BApps-Studio`, où vit le Brand Set) : **aucun fichier logo de
+championnat n'existe dans le projet** — seuls les assets de la marque *Motorsport
+Calendar* elle-même sont présents (et toujours au stade placeholder, non copiés). Décision
+prise avec l'utilisateur : construire le registre "prêt à recevoir" plutôt que d'inventer
+des fichiers factices faisant office de faux logos officiels.
+
+**Décision**
+Un module dédié, `gui/championship_assets.py`, expose un unique point d'entrée
+`get_championship_asset(championship_id: str) -> ChampionshipAsset(logo_src: str | None)`.
+`logo_src` est un chemin Flet-relatif (`"championships/formula1.png"`), résolu UNIQUEMENT
+si le fichier existe réellement sur disque (`_ASSETS_DIR / filename`) ; sinon `None` — id
+inconnu et id connu dont le logo n'a pas encore été livré produisent exactement le même
+résultat, jamais distingué par l'appelant. `ChampionshipCard._header_title()` interroge ce
+registre et rend soit un `ft.Text` nu (aucun logo — comportement strictement identique à
+avant ce sprint pour tous les championnats aujourd'hui), soit un `ft.Row([ft.Image(...),
+ft.Text(...)])`, logo en `theme.IconSize.LG` (24px, token déjà existant, aucun nouveau
+token créé). Aucune branche par championnat dans le composant — la seule décision qu'il
+prend est "un logo a été résolu ou non".
+
+**Conséquences**
+- Suit exactement le patron déjà validé pour le logo de l'app (`gui/assets/logo/
+  README.md`, Sprint 26) : dossier `gui/assets/championships/` livré vide (`.gitkeep` +
+  README documentant les fichiers attendus), aucune autre modification nécessaire le jour
+  où un vrai logo est déposé — `get_championship_asset()` le détecte à l'exécution.
+- Extensible sans casser l'appelant : une future couleur/icône par championnat serait un
+  champ de plus sur `ChampionshipAsset`, jamais un second point d'entrée.
+- Zéro impact visuel dans l'état actuel du dépôt (aucun fichier livré) — vérifié par les
+  999 tests et un script de smoke-test direct ; le layout de `ChampionshipCard` reste
+  pixel pour pixel identique tant qu'aucun logo n'est déposé.
+- `assets_dir=` reste commenté dans `gui/app.py` (partagé avec le logo de l'app) — même un
+  logo déposé ne se résoudra visuellement qu'après ce décommentage, hors périmètre de ce
+  sprint (documenté comme limite, pas comme un défaut de cet ADR).
+
+---
+
+## ADR-023 — `gui/event_display.py` : normalisation des métadonnées, en amont de la carte
+
+**Contexte**
+Sprint 32. Les cartes de championnat affichaient des incohérences ("Belgian / Belgian /
+🇧🇪 Belgique", "Unknown") sur F2/F3/F1 Academy mais pas F1. Investigation (voir JOURNAL,
+session Sprint 32) : F1 (Jolpica/Ergast) fournit un nom de Grand Prix complet, un nom de
+circuit distinct et un pays réel ; F2/F3/F1 Academy partagent tous les trois
+`providers/support_series/f1calendar_base.py`, qui mappe `Circuit.name` sur le même
+descriptif court que `Event.name` (dataset `sportstimes/f1`, plus pauvre, sans champ nom
+de circuit dédié) — d'où le doublon. Le pays "Unknown" vient de tables de couverture
+`_CIRCUIT_DATA` incomplètes, propres à chaque module support-series. Corriger cela dans
+les providers est hors périmètre de ce sprint.
+
+**Décision**
+Un module dédié, `gui/event_display.py`, décide de tout ce qu'il faut afficher ou masquer
+à partir d'un `Event` brut : `normalize_event_display(championship_id, event) ->
+EventDisplayData(grand_prix_name, circuit_name: str | None, country: str | None)`. Quatre
+règles, toutes dans ce seul module : (1) doublon Grand Prix/Circuit → une ligne ; (2)
+circuit inconnu → `circuit.name` puis repli sur `circuit.city` puis `None` ; (3) pays
+inconnu (sentinelle `"Unknown"` ou vide) → `None`, jamais affiché ; (4) nom de Grand Prix
+absent → suffixe " Grand Prix" ajouté pour les séries à ce format (F1/F2/F3/F1 Academy,
+jamais WEC), repli sur le nom du circuit, puis un texte générique en dernier recours.
+
+`ChampionshipCardData.circuit_name`/`.country` deviennent `str | None` ; `build_
+championship_card` (le composant, Sprint 30) se contente d'omettre une ligne dont la
+valeur est `None` — une simple omission conditionnelle, pas une décision. Le composant ne
+contient toujours aucune logique métier ; toute la logique vit dans `event_display.py`.
+
+**Conséquences**
+- Corrige le défaut à la source des DONNÉES affichées sans toucher aux providers : la
+  bonne valeur (`circuit.city`, souvent un meilleur nom de circuit pour F2/F3/F1 Academy)
+  était déjà présente sur le modèle, seul le choix d'affichage était mauvais.
+- `country_label()` (Sprint 29, formatage drapeau+nom FR) déménage de
+  `upcoming_weekend.py` vers `event_display.py`, qui est désormais le seul endroit
+  responsable de "quelle métadonnée d'événement afficher".
+- Réutilisable par n'importe quelle future vue construisant des `ChampionshipCardData` à
+  partir d'`Event` (Favoris, Recherche, Historique, ...) — la même normalisation
+  s'applique automatiquement, sans dépendre de "Ce week-end".
+- Limite assumée et documentée : pas de table démonyme complète ("Canada Grand Prix" au
+  lieu de "Canadian Grand Prix") — jugée hors de proportion pour ce sprint.
+- La couverture des tables `_CIRCUIT_DATA` par pays reste incomplète en amont — la ligne
+  pays disparaît proprement plutôt que d'afficher "Unknown", mais un vrai pays
+  n'apparaîtra pas tant que le provider (hors périmètre) n'est pas complété.
+
+---
+
+## ADR-022 — Layout System (`gui/components/layout/`) : en-tête toujours séparé du corps
+
+**Contexte**
+Sprint 31. Les 5 vues dupliquaient chacune la construction de leur conteneur de page, de
+leur en-tête, de leurs espacements et de leur encartage — exactement le problème résolu
+au niveau des cartes par ADR-021 (Sprint 30), mais au niveau de la page entière cette
+fois. Objectif explicite : qu'une future page (Recherche, Tableau de bord, Notifications,
+Historique, ...) se construise sans recréer ce code.
+
+**Décision**
+Sept composants à responsabilité unique dans `gui/components/layout/` : `PageContainer`
+(largeur/padding/alignement, délègue à `theme.page_shell`), `PageHeader` (icône, titre,
+sous-titre, séparateur), `Section` (espacement entre blocs), `SectionHeader` (intitulé
+secondaire à l'intérieur d'une Section), `CardList` (liste verticale de cartes),
+`EmptyState` (le "rien ici" encarté), `PageSpacing` (espace nommé ponctuel). Nommage
+PascalCase délibéré (widget-style), avec exception `ruff.toml` scopée (`N802` sur ce seul
+paquet) plutôt que des `noqa` dispersés.
+
+Choix structurant : `PageHeader` est **toujours** un composant séparé, jamais absorbé
+dans une carte de contenu — y compris pour Favoris et Ce week-end (vide), qui absorbaient
+leur titre dans la carte depuis le Sprint 28 pour éviter un doublon visuel. Ce choix est
+révisé ici : une future page avec un en-tête ET un contenu variable (ex. Recherche : titre
++ barre de recherche + résultats OU `EmptyState`) ne peut pas se permettre que son
+`EmptyState` porte AUSSI le titre de la page — les deux responsabilités doivent rester
+séparées dès maintenant, plutôt que de re-décorréler plus tard.
+
+**Conséquences**
+- Le titre de "Ce week-end" et "Mes favoris" apparaît désormais au-dessus de la carte
+  plutôt qu'à l'intérieur — changement visuel mineur, assumé et documenté (voir JOURNAL,
+  session Sprint 31).
+- Les lignes de Préférences retrouvent leur bordure individuelle : la carte englobante
+  unique du Sprint 28 (qui rendait cette bordure redondante) n'existe plus, chaque ligne
+  redevient sa propre carte via `CardList` sans double encadrement.
+- `championship_card.py` (Sprint 30) reste à sa place actuelle dans `gui/components/` —
+  pas de réorganisation en sous-dossiers pour "faire symétrique" avec `layout/`, qui
+  aurait été un remaniement sans bénéfice fonctionnel.
+- `SectionHeader` est construit sans consommateur actuel — seul composant du sprint dans
+  ce cas, justifié par une demande explicite du brief (nommé dans la liste des composants
+  à créer), verrouillé par tests, prêt pour la première page à plusieurs groupes de cartes.
+- Toute nouvelle page suit désormais le même moule :
+  `PageContainer(header=PageHeader(...), body=[Section(...)])` — verrouillé par
+  `TestLayoutSystemIntegration` (`tests/test_gui_components_layout.py`), qui construit une
+  page hypothétique ("Historique", 2 sections avec `SectionHeader` + `CardList` chacune)
+  sans aucun code de mise en page manuel, preuve directe de l'objectif du sprint.
+
+---
+
+## ADR-021 — `gui/components/` : bibliothèque de composants, séparée des vues et du thème
+
+**Contexte**
+Sprint 30. Jusqu'ici, chaque vue (`gui/views/*.py`) construisait entièrement son propre
+layout à partir des primitives de `theme.py` (`card()`, `section_title()`, ...). "Ce
+week-end" a le premier vrai besoin de layout réutilisable : une carte "événement d'un
+championnat" qui devra réapparaître à l'identique dans Favoris, Recherche, Tableau de
+bord, Calendrier, Notifications et Historique. Continuer à la reconstruire dans chaque
+vue aurait garanti une dérive visuelle progressive (exactement le problème résolu au
+Sprint 27 pour les pages, mais au niveau des cartes cette fois).
+
+**Décision**
+Nouveau paquet `motorsport_calendar/gui/components/`, distinct de `gui/views/` (une page =
+un module, propriétaire de son état) et de `gui/theme.py` (tokens et primitives bas niveau
+sans opinion sur le contenu). Un composant :
+1. Définit son propre modèle de données minimal, déjà mis en forme (chaînes françaises,
+   heures déjà converties) — jamais un objet du domaine (`Event`, `Session`, `Championship`,
+   `Circuit`) ni un concept métier ("week-end", "favori", ...).
+2. Se construit uniquement à partir des primitives de `theme.py` — aucun nouveau token.
+3. Expose un point d'extension explicite (ici `footer: ft.Control | None`) plutôt que
+   d'anticiper des fonctionnalités non demandées — le composant place le contrôle fourni
+   sans jamais l'interpréter.
+
+Premier composant : `championship_card.py` (`ChampionshipCardData`, `SessionRow`,
+`build_championship_card`). Son modèle remplace `upcoming_weekend.WeekendCard`/`SessionRow`,
+qui remplissaient déjà exactement ce rôle mais vivaient dans un module couplé au concept
+"Ce week-end" — désormais promus à un emplacement neutre, `upcoming_weekend.py` les importe
+au lieu de les définir.
+
+**Conséquences**
+- `views/weekend.py` ne construit plus aucun layout de carte : `_found_state` produit une
+  liste de `build_championship_card(card)` — exactement l'attente exprimée ("la vue devra
+  simplement construire une liste de ChampionshipCard").
+- Une future vue Favoris/Recherche/Tableau de bord n'a qu'à produire des
+  `ChampionshipCardData` depuis sa propre source de données (favoris sauvegardés, résultats
+  de recherche, ...) et appeler `build_championship_card` — aucune modification au
+  composant nécessaire.
+- Ajouter un bouton Favori/Notifications/Export/Partage/Résultats plus tard se fait en
+  construisant le contrôle du footer dans l'appelant et en le passant à
+  `build_championship_card(data, footer=...)` — pas de changement de signature.
+- 23 tests dédiés (`tests/test_gui_components_championship_card.py`) verrouillent l'ordre
+  de l'en-tête, l'alignement de la grille de sessions (indépendant de la longueur du
+  libellé), le comportement du footer (absent par défaut, extensible sans interprétation),
+  et le rendu pour les 5 championnats actuels + un événement de forme différente (24h du
+  Mans) — preuve directe de réutilisabilité, pas seulement de non-régression.
+
+---
+
+## ADR-020 — `WeekendEntry` : transporter l'id de championnat plutôt que le déduire
+
+**Contexte**
+Sprint 29 — "Ce week-end" doit regrouper les événements du week-end trouvé par catégorie
+(Formula puis Endurance, via `categories.get_groups_for`) et afficher un nom lisible
+(`display_names.get_display_name`). Ces deux fonctions attendent l'id brut du registre
+(`"formula1"`, `"wec"`, …). En développant avec de vraies données (pas seulement des
+fixtures), le regroupement échouait silencieusement : tout finissait dans le groupe
+"Autres" de secours de `get_groups_for`.
+
+**Cause racine**
+Chaque provider construit ses `Event` avec un `Championship.id` suffixé par l'année —
+`f"{cid}-{year}"` (`"formula1-2026"`, `"f1-academy-2026"`, …), visible dans
+`jolpica.py::_make_championship`, `f1calendar.py::_make_championship` (F2/F3/F1 Academy).
+Ce n'est pas un bug de ces providers : c'est un identifiant de *saison*, cohérent avec son
+usage existant (`Formula1Provider.fetch_championship` produit le même format). Mais rien
+dans le reste de la GUI n'avait encore eu besoin de comparer cet id à l'id du registre —
+`generate_calendar`/`list_championships` ne le font jamais.
+
+**Décision**
+`upcoming_weekend.WeekendEntry(championship_id, event)` — le contrôleur, qui connaît déjà
+l'id du registre au moment de l'appel (`for cid in WEEKEND_CHAMPIONSHIP_IDS: ...
+await provider.fetch_events(cid, year)`), l'attache explicitement à chaque événement
+récupéré. Toute la logique de recherche/regroupement/affichage de `upcoming_weekend.py`
+lit `entry.championship_id`, jamais `entry.event.championship.id`.
+
+**Conséquences**
+- Aucune modification aux providers ni aux modèles métier — la correction reste
+  entièrement côté GUI, conforme à la contrainte du sprint.
+- `test_championship_id_comes_from_the_entry_not_the_event` (`test_gui_upcoming_weekend.py`)
+  verrouille explicitement la régression : construit un événement dont l'id diffère
+  volontairement de l'id de registre, vérifie que la carte utilise bien ce dernier.
+- Règle pour les futures fonctionnalités GUI qui agrègent plusieurs championnats : ne
+  jamais supposer que `Event.championship.id` égale l'id du registre — le transporter
+  explicitement depuis l'appelant, comme `WeekendEntry`.
+- Effet de bord découvert au passage : `ProvidersConfig.formula1` défaut sur la source
+  `"openf1"` (pas `"jolpica"`, pourtant enregistrée en premier) — déjà le comportement de
+  `generate_calendar`, simplement jamais remarqué faute de test F1 dans
+  `test_gui_controller.py` avant ce sprint.
+
+---
+
+## ADR-019 — Grille de page unique (`theme.page_shell`) pour toutes les vues GUI
+
+**Contexte**
+Sprint 27. Après validation visuelle du Design System (Sprint 26), incohérence constatée :
+Ce week-end / Mes favoris / À propos centraient tout leur contenu au milieu de l'écran,
+tandis que Mon calendrier / Préférences étaient alignés à gauche. Chaque vue construisait
+son propre `Container(padding=..., alignment=...)` — rien n'empêchait la dérive.
+
+**Décision**
+Une seule fonction, `theme.page_shell(*sections)`, rend toutes les vues. Elle centre
+*uniquement* un conteneur à largeur plafonnée (`MAX_CONTENT_WIDTH = 1000`, dans la
+fourchette 900–1100 px demandée) horizontalement dans la fenêtre ; à l'intérieur, une
+`Column` unique en `horizontal_alignment=STRETCH` fait remplir la largeur du gabarit à
+toute carte/formulaire sans jamais centrer le contenu lui-même. Les 5 vues (`weekend.py`,
+`calendar.py`, `favorites.py`, `preferences.py`, `about.py`) appellent cette fonction avec
+la liste de leurs sections (`section_title` + `Divider` + contenu propre à la page) au lieu
+de construire leur propre conteneur racine.
+
+**Conséquences**
+- Un futur changement de largeur max, de padding ou d'alignement se fait à un seul endroit ;
+  aucune vue ne peut plus dériver silencieusement vers un layout différent.
+- `TestAllViewsShareTheSameGrid` (`tests/test_gui_views.py`) construit les 5 vues et vérifie
+  qu'elles partagent strictement la même largeur, le même centrage externe, le même
+  alignement interne et le même padding — verrou anti-régression direct sur l'exigence
+  "même gabarit partout".
+- Le rétrécissement responsive sur fenêtre étroite ne nécessite aucun recalcul manuel :
+  `ft.Container(width=MAX_CONTENT_WIDTH)` sous un parent `alignment=TOP_CENTER` est
+  automatiquement bridé par les contraintes du parent quand l'espace disponible est
+  inférieur à 1000 px (comportement standard `BoxConstraints.enforce` de Flutter).
+- Mon calendrier perd son en-tête custom (logo + nom de l'app) au profit du même
+  `section_title` que les autres pages, pour une uniformité réelle des titres — le
+  placeholder logo (ADR-018) reste sur la page À propos.
+- Aucun changement à `GenerateState`, `CalendarViewControls` ou aux handlers de
+  `main_view.py` : uniquement le conteneur racine retourné par chaque `build_*_view()`.
+
+---
+
+## ADR-018 — Design system `gui/theme.py` + assistant par étapes pour "Mon calendrier"
+
+**Contexte**
+Sprint 26 — Release Alpha Phase 2. Le brief produit interdit toute couleur codée en dur
+dans les vues et demande de transformer "Mon calendrier" en parcours guidé, sans toucher
+au moteur ni aux pages Ce week-end / Mes favoris / Préférences au-delà de leur habillage
+visuel. Le Brand Set Motorsport Calendar v1.0 est validé (voir `BApps-Studio/03-Products/
+Motorsport-Calendar/Branding/Branding.md`) mais ses SVG définitifs ne sont pas encore
+livrés dans ce dépôt.
+
+**Décision**
+1. Un seul module, `motorsport_calendar/gui/theme.py`, porte toutes les couleurs
+   (`BAppsColors`, `MotorsportColors`, puis `Colors` en rôles sémantiques), les échelles
+   d'espacement/rayon/icône/typo, et les constructeurs de composants partagés
+   (`card()`, `chip()`, `button_style()`, `page_padding()`, `section_title()`,
+   `logo_placeholder()`). Toute vue qui a besoin d'une couleur ou d'une taille importe
+   ces tokens — jamais `ft.Colors.*` ni un entier brut directement.
+2. "Mon calendrier" (`gui/views/calendar.py`) devient un assistant à 4 étapes (saison →
+   championnats → destination → créer) au lieu d'un formulaire long. La navigation avant
+   est gatée par la validité de l'étape courante (`GenerateState.can_advance()`) ; le
+   retour et le clic sur une puce d'étape déjà visitée sont toujours autorisés.
+3. `logo_placeholder()` matérialise l'emplacement du futur logo (nav/À propos/en-tête du
+   wizard) sans qu'aucun SVG définitif soit copié dans le dépôt — voir
+   `gui/assets/logo/README.md`.
+
+**Conséquences**
+- Un changement de palette de marque ne touche plus qu'un seul fichier.
+- `GenerateState` gagne `current_step`/`step_valid`/`can_advance`/`can_go_back` — logique
+  de wizard 100 % testable sans Flet, comme le reste de `models.py`.
+- `calendar.py` reste un module de layout pur : `main_view.py` continue de porter tout
+  l'état et les handlers, conformément à la règle établie au Sprint 25.
+- Effet de bord positif : centraliser les couleurs a fait apparaître (et corrigé en un
+  seul endroit) l'usage de noms `ft.Colors.WHITE12/30/38/54/60/70` dépréciés depuis
+  Flet 0.85 — remplacés par `WHITE_12/30/38/54/60/70`.
+- Le remplacement du vrai logo, quand les SVG seront livrés, se limite à modifier
+  `logo_placeholder()`'s call sites listés dans `gui/assets/logo/README.md` — aucun
+  rework de layout attendu.
+
+---
+
 ## ADR-001 — Pydantic v2 avec `frozen=True` pour tous les modèles
 
 **Contexte**

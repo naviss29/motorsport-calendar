@@ -24,6 +24,10 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/**/*.py" = ["ANN", "S101"]
+# Layout System components (Sprint 31) are named like widgets (PageContainer,
+# PageHeader, ...), matching the Flet/Flutter-style naming used at their call
+# sites across every view — deliberate, not an oversight.
+"motorsport_calendar/gui/components/layout/*.py" = ["N802"]
 
 [lint.isort]
 known-first-party = ["motorsport_calendar"]

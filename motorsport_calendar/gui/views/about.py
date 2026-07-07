@@ -2,6 +2,13 @@
 
 Extracted from main_view.py so each view stays in its own module.
 Requires url_launcher to open the GitHub link.
+
+Sprint 28: compacted — the app name + version serve as the page's own
+heading (no separate generic "À propos" label above them). Sprint 31: now
+composed via the Layout System's ``PageContainer`` (no ``header=`` — this
+page deliberately keeps its compact branding block as content rather than
+the standard ``PageHeader``, unchanged from Sprint 28) + ``Section`` for
+its content, instead of building its own container/spacing directly.
 """
 from __future__ import annotations
 
@@ -10,13 +17,15 @@ import sys
 
 import flet as ft
 
+from motorsport_calendar.gui import theme
+from motorsport_calendar.gui.components.layout import PageContainer, Section
 from motorsport_calendar.gui.strings import STRINGS
 
 _GITHUB_URL = "https://github.com/naviss29/motorsport-calendar"
 
 
 def build_about_view(url_launcher: ft.UrlLauncher) -> ft.Control:
-    """Return the À propos view.
+    """Return the À propos view, through the Layout System.
 
     Args:
         url_launcher: Flet UrlLauncher service registered in page.services.
@@ -29,69 +38,64 @@ def build_about_view(url_launcher: ft.UrlLauncher) -> ft.Control:
             if sys.platform == "win32":
                 subprocess.Popen(f"start {_GITHUB_URL}", shell=True)  # noqa: S602,S607
 
-    return ft.Container(
-        content=ft.Column(
-            controls=[
-                ft.Row(
-                    [ft.Icon(ft.Icons.SPORTS_MOTORSPORTS, size=48, color=ft.Colors.RED_400)],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-                ft.Text(
-                    STRINGS.app_title,
-                    size=24,
-                    weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                ft.Text(
-                    STRINGS.about_version,
-                    size=13,
-                    color=ft.Colors.WHITE54,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                ft.Container(height=16),
-                ft.Divider(),
-                ft.Container(height=8),
-                ft.Text(
-                    STRINGS.about_description,
-                    size=13,
-                    color=ft.Colors.WHITE70,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                ft.Container(height=16),
-                ft.Text(
-                    STRINGS.about_developer,
-                    size=14,
-                    weight=ft.FontWeight.W_500,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-                ft.Row(
+    branding_row = ft.Row(
+        [
+            theme.logo_placeholder("icon", size=theme.IconSize.XL),
+            ft.Column(
+                [
+                    ft.Text(
+                        STRINGS.app_title,
+                        size=theme.FontSize.TITLE,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    ft.Text(
+                        STRINGS.about_version,
+                        size=theme.FontSize.SMALL,
+                        color=theme.Colors.TEXT_MUTED,
+                    ),
+                ],
+                spacing=2,
+            ),
+        ],
+        spacing=theme.Spacing.SM,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
+    description = ft.Text(
+        STRINGS.about_description,
+        size=theme.FontSize.BODY,
+        color=theme.Colors.TEXT_SECONDARY,
+    )
+
+    developer = ft.Text(
+        STRINGS.about_developer,
+        size=theme.FontSize.LABEL,
+        weight=ft.FontWeight.W_500,
+    )
+
+    github_row = ft.Row(
+        [
+            ft.TextButton(
+                content=ft.Row(
                     [
-                        ft.TextButton(
-                            content=ft.Row(
-                                [
-                                    ft.Icon(ft.Icons.OPEN_IN_NEW, size=14),
-                                    ft.Text(STRINGS.about_github_label, size=13),
-                                ],
-                                spacing=4,
-                                tight=True,
-                            ),
-                            on_click=on_github_click,
-                        )
+                        ft.Icon(ft.Icons.OPEN_IN_NEW, size=theme.IconSize.SM),
+                        ft.Text(STRINGS.about_github_label, size=theme.FontSize.BODY),
                     ],
-                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=theme.Spacing.XXS,
+                    tight=True,
                 ),
-                ft.Container(height=8),
-                ft.Text(
-                    STRINGS.about_license,
-                    size=12,
-                    color=ft.Colors.WHITE38,
-                    text_align=ft.TextAlign.CENTER,
-                ),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=6,
-        ),
-        expand=True,
-        padding=ft.Padding.all(32),
-        alignment=ft.Alignment.TOP_CENTER,
+                on_click=on_github_click,
+            )
+        ],
+        alignment=ft.MainAxisAlignment.START,
+    )
+
+    license_text = ft.Text(
+        STRINGS.about_license,
+        size=theme.FontSize.SMALL,
+        color=theme.Colors.TEXT_GHOST,
+    )
+
+    return PageContainer(
+        body=[Section(branding_row, description, developer, github_row, license_text)],
     )

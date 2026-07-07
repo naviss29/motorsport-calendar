@@ -68,6 +68,33 @@ class TestStrings:
         assert s.close_btn == "OK"
         assert s.app_title == "Motorsport Calendar"
 
+    def test_wizard_step_labels_still_present(self) -> None:
+        """Sprint 28: the pastilles' own labels must survive the cleanup."""
+        for key in (
+            "wizard_step_season",
+            "wizard_step_championships",
+            "wizard_step_destination",
+            "wizard_step_create",
+        ):
+            assert hasattr(STRINGS, key)
+
+    def test_redundant_wizard_step_titles_removed(self) -> None:
+        """Sprint 28: "Étape N — ..." title + help text dropped — the step
+        indicator (pastilles) is enough on its own, per-step body starts
+        directly with its field.
+        """
+        for key in (
+            "wizard_title_season",
+            "wizard_help_season",
+            "wizard_title_championships",
+            "wizard_help_championships",
+            "wizard_title_destination",
+            "wizard_help_destination",
+            "wizard_title_create",
+            "wizard_help_create",
+        ):
+            assert not hasattr(STRINGS, key), f"stale wizard string still present: {key}"
+
 
 class TestPlural:
     def test_zero_returns_s(self) -> None:

@@ -12,12 +12,19 @@ def _current_year() -> int:
 
 @dataclass
 class GenerateState:
-    """Mutable state shared across the main view."""
+    """Mutable state shared across the main view.
+
+    ``current_step`` drives the "Mon calendrier" wizard (Sprint 26 — Release
+    Alpha Phase 2): 0=saison, 1=championnats, 2=destination, 3=créer.
+    """
 
     year: int = field(default_factory=_current_year)
     selected_championships: list[str] = field(default_factory=list)
     output_path: str = ""
     is_generating: bool = False
+    current_step: int = 0
+
+    STEP_COUNT = 4
 
     def is_ready(self) -> bool:
         """True when all required fields are set and no generation is running."""
@@ -26,6 +33,29 @@ class GenerateState:
             and bool(self.output_path)
             and not self.is_generating
         )
+
+    def step_valid(self, step: int) -> bool:
+        """True when the required input for wizard *step* is present.
+
+        Step 0 (saison) has a default value, so it is always valid.
+        """
+        if step == 0:
+            return True
+        if step == 1:
+            return bool(self.selected_championships)
+        if step == 2:
+            return bool(self.output_path)
+        if step == 3:
+            return self.is_ready()
+        raise ValueError(f"unknown wizard step: {step}")
+
+    def can_advance(self) -> bool:
+        """True when the current step is valid and it is not the last step."""
+        return self.current_step < self.STEP_COUNT - 1 and self.step_valid(self.current_step)
+
+    def can_go_back(self) -> bool:
+        """True when the wizard is not on the first step."""
+        return self.current_step > 0
 
 
 @dataclass(frozen=True)

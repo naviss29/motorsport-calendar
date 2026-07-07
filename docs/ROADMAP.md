@@ -98,6 +98,100 @@
 
 ---
 
+## v0.4.7 — Registre des identités visuelles de championnat ✅ Sprint 33 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `gui/championship_assets.py` — registre central `championship_id` → logo (extensible couleur/icône) | ✅ |
+| Point d'entrée unique `get_championship_asset()` — aucune vue/composant ne connaît un chemin de fichier | ✅ |
+| `ChampionshipCard` : logo affiché à gauche du titre, `IconSize.LG` (24px), aucun `if championnat == ...` | ✅ |
+| Aucun fichier logo officiel livré — repli gracieux, layout actuel inchangé pixel pour pixel | ✅ |
+| Aucune régression — Design System, navigation, providers, layout inchangés | ✅ |
+| 16 nouveaux tests — 999 total, couverture 95 % | ✅ |
+
+---
+
+## v0.4.6 — Normalisation des métadonnées des événements ✅ Sprint 32 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `gui/event_display.py` — normalisation dédiée (jamais "Unknown", jamais de doublon) | ✅ |
+| Règle documentée pour le nom de Grand Prix absent/court/déjà complet | ✅ |
+| Investigation F1 vs F2/F3/F1 Academy documentée (cause API + cause mapping) | ✅ |
+| `ChampionshipCardData` : circuit/pays optionnels, composant toujours sans logique métier | ✅ |
+| Aucune régression — providers, Design System, navigation inchangés | ✅ |
+| 26 nouveaux tests — 983 total, couverture 95 % | ✅ |
+
+---
+
+## v0.4.5 — Layout System ✅ Sprint 31 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `gui/components/layout/` — PageContainer, PageHeader, Section, SectionHeader, CardList, EmptyState, PageSpacing | ✅ |
+| Les 5 vues migrées : plus aucune ne construit son propre conteneur/en-tête/carte | ✅ |
+| Une nouvelle page se compose désormais sans code de mise en page manuel | ✅ |
+| Aucune régression — Design System, couleurs, icônes, navigation, providers inchangés | ✅ |
+| 51 nouveaux tests — 957 total, couverture 95 % | ✅ |
+
+---
+
+## v0.4.4 — Composant ChampionshipCard ✅ Sprint 30 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `gui/components/` — première bibliothèque de composants réutilisables | ✅ |
+| `ChampionshipCard` — carte unique extraite de "Ce week-end", réutilisable partout | ✅ |
+| En-tête (championnat, Grand Prix, circuit, pays), grille de sessions alignée | ✅ |
+| Point d'extension `footer` prêt pour Favori/Notifications/Export ICS/Partage/Résultats | ✅ |
+| "Ce week-end" migré : la vue construit une liste de `ChampionshipCard`, aucun layout propre | ✅ |
+| Aucune régression — Design System, navigation, providers inchangés | ✅ |
+| 23 nouveaux tests — 903 total, couverture 95 % | ✅ |
+
+---
+
+## v0.4.3 — Ce week-end : version fonctionnelle ✅ Sprint 29 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| Recherche automatique du prochain week-end de course (F1, F2, F3, F1 Academy, WEC) | ✅ |
+| Une carte par championnat — Grand Prix, circuit, pays (drapeau), sessions chronologiques | ✅ |
+| Tri Formula puis Endurance, chronologique à l'intérieur de chaque catégorie | ✅ |
+| 3 états : chargement / aucune course (avec prochaine date connue) / trouvé | ✅ |
+| Fetch une seule fois par lancement, cache HTTP existant réutilisé (jamais de réseau à chaque ouverture) | ✅ |
+| Aucun nouveau provider — réutilise `registry`/`source_registry`/`HttpCache` tels quels | ✅ |
+| 34 nouveaux tests — 880 total, couverture 95 % | ✅ |
+
+---
+
+## v0.4.2 — Uniformisation du layout (UX) ✅ Sprint 27 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `theme.page_shell()` — grille de page unique (max-width 1000px, centrée, contenu toujours aligné à gauche) | ✅ |
+| Ce week-end / Mes favoris / À propos alignés à gauche (fin du centrage mid-écran) | ✅ |
+| En-tête uniforme (`section_title` + `Divider`) sur les 5 pages, y compris Mon calendrier | ✅ |
+| Largeurs de cartes uniformisées (suppression des largeurs fixes ad hoc) | ✅ |
+| `TestAllViewsShareTheSameGrid` — verrou anti-régression sur le gabarit partagé | ✅ |
+| 18 nouveaux tests — 837 total, couverture 94 % | ✅ |
+
+---
+
+## v0.4.1 — Release Alpha Phase 2 — UX & Design System ✅ Sprint 26 (2026-07-07)
+
+| Fonctionnalité | Statut |
+|---|---|
+| `gui/theme.py` — design system (couleurs BApps + Motorsport Calendar, spacing, radius, icônes, boutons, cartes) | ✅ |
+| "Mon calendrier" transformé en assistant 4 étapes (saison / championnats / destination / créer) | ✅ |
+| Navigation étapes gatée par validité, retour + puces d'étapes déjà visitées cliquables | ✅ |
+| Récapitulatif étape finale avec liens "Modifier" vers chaque étape | ✅ |
+| Uniformisation visuelle Ce week-end / Mes favoris / Préférences / À propos (theme uniquement, contenu inchangé) | ✅ |
+| Emplacement logo préparé (`logo_placeholder()`, `gui/assets/logo/README.md`) — placeholder, pas d'asset définitif | ✅ |
+| Correction warnings dépréciation `ft.Colors.WHITE12` → `WHITE_12` (Flet 0.85) | ✅ |
+| 55 nouveaux tests — 819 total, couverture 94 % | ✅ |
+
+---
+
 ## v0.4.0 — Release Alpha Phase 1 ✅ Sprint 25 (2026-07-06)
 
 | Fonctionnalité | Statut |

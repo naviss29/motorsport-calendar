@@ -6,8 +6,12 @@ Never duplicates providers, registry, exporter, or cache.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from motorsport_calendar.gui.upcoming_weekend import WeekendResult
 
 
 def list_championships() -> list[str]:
@@ -16,6 +20,67 @@ def list_championships() -> list[str]:
 
     registry.discover()
     return registry.list_all()
+
+
+async def get_upcoming_weekend(*, now: datetime | None = None) -> WeekendResult:
+    """Find the next race weekend across the 5 "Ce week-end" championships.
+
+    Mirrors ``generate_calendar``'s fetch pipeline exactly — same registries,
+    same HttpCache, no new provider. ``refresh=False`` always: relies on the
+    existing cache TTL so opening this page repeatedly does not hit the
+    network every time. Never raises — a failing championship/year is
+    skipped, matching the CLI's partial-failure resilience rule.
+
+    Returns a ``upcoming_weekend.WeekendResult`` (found + display-ready
+    cards, or not-found + a hint date for the next available weekend).
+    """
+    from motorsport_calendar.cache import HttpCache
+    from motorsport_calendar.config import ConfigService
+    from motorsport_calendar.config.models import ProviderConfig
+    from motorsport_calendar.core.registry import registry
+    from motorsport_calendar.core.source_registry import source_registry
+    from motorsport_calendar.gui.upcoming_weekend import (
+        WEEKEND_CHAMPIONSHIP_IDS,
+        WeekendEntry,
+        find_upcoming_weekend,
+    )
+
+    reference_now = now or datetime.now(UTC)
+
+    config = ConfigService()
+    cache: HttpCache | None = None
+    if config.cache.enabled:
+        cache = HttpCache(cache_dir=config.cache.resolved_path, ttl=config.cache.ttl_seconds)
+
+    registry.discover()
+    source_registry.discover()
+
+    entries: list[WeekendEntry] = []
+
+    for cid in WEEKEND_CHAMPIONSHIP_IDS:
+        available = source_registry.list_for(cid)
+        if not available:
+            continue
+
+        provider_cfg = config.providers.get(cid) or ProviderConfig()
+        source_name = provider_cfg.source or available[0]
+
+        try:
+            make_source = source_registry.get(cid, source_name)
+            make_provider = registry.get(cid)
+        except KeyError:
+            continue
+
+        for year in (reference_now.year, reference_now.year + 1):
+            source = make_source(cache, False)
+            provider = make_provider(source)
+            try:
+                events = await provider.fetch_events(cid, year)
+                entries.extend(WeekendEntry(championship_id=cid, event=e) for e in events)
+            except Exception:  # one championship/year failing must not break the rest
+                continue
+
+    return find_upcoming_weekend(entries, now=reference_now)
 
 
 async def generate_calendar(
