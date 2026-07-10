@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/branding/Banner.png" alt="Motorsport Calendar — by BApps" width="100%">
+</p>
+
 # motorsport-calendar
 
 > Generate motorsport race calendars in ICS format — subscribe once, stay updated automatically.

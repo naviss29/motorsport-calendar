@@ -1053,6 +1053,48 @@ Tous les points de blocage se comportent comme attendu.
 
 ---
 
+## Session 2026-07-06 — Release Alpha : Branding v1.0
+
+### Objectif
+Produire les assets graphiques officiels du produit à partir du Brand Set validé (`BApps-Studio/03-Products/Motorsport-Calendar/Branding/Brand-Set-v1.0.png.png`) : logos, icône, favicons, `.ico`, visuels GitHub. Aucun redesign — déclinaison du Brand Set existant.
+
+### Travail effectué
+
+**Sources vectorielles** (recréation fidèle du Brand Set — palette, typographie et composition respectées ; pas un export direct du moodboard)
+- `mc-icon.svg` — monogramme MC, dégradé BApps Blue → BApps Cyan, accent damier
+- `logo-horizontal.svg` — monogramme + wordmark "Motorsport Calendar" (Variante A, texte blanc) + tagline "by BApps"
+- `logo-vertical.svg` — monogramme centré au-dessus du wordmark, "Calendar" en dégradé
+
+**Rendu** via un environnement de rendu isolé (Node + sharp/librsvg, polices Space Grotesk + Arial en substitut d'Inter — non commité, outillage local uniquement) :
+- `mc-icon.png`, `logo-horizontal.png`, `logo-vertical.png` (fond transparent)
+- `favicon-32.png`, `favicon-16.png`
+- `icon.ico` — multi-résolution 16/24/32/48/64/128/256, tuile arrondie sur fond sombre
+- `Cover-GitHub.png` (1200×630), `Banner.png` (1920×400)
+- `Branding.md` — palette, typographie, principes d'usage, liste des livrables
+
+**Diffusion**
+- Livrables déposés dans `assets/branding/` (ce dépôt) et dans `BApps-Studio/03-Products/Motorsport-Calendar/Branding/` (référentiel central du studio)
+- `motorsport_calendar/gui/assets/icon.png` peuplé (placeholder déjà prévu dans `app.py`, code non modifié — l'activation de `assets_dir`/`window.icon` reste à décider)
+- `README.md` : ajout de la bannière en en-tête
+
+### Fichiers modifiés / créés
+
+| Fichier | Action |
+|---|---|
+| `assets/branding/*` | Créé — 12 fichiers (sources SVG + rendus + Branding.md) |
+| `motorsport_calendar/gui/assets/icon.png` | Créé |
+| `README.md` | Modifié — bannière en en-tête |
+| `docs/JOURNAL.md` | Mis à jour |
+
+### Tests exécutés
+Non applicable — tâche de production d'assets graphiques, aucun code exécutable modifié.
+
+### Bugs rencontrés
+- La police variable Space Grotesk rendait en serif de repli avec `font-weight: 700` (Bold) via librsvg/Pango, mais correctement en sans-serif avec `font-weight: 600` — utilisé 600 (SemiBold), qui correspond de toute façon à la graisse spécifiée par la charte pour les titres.
+- Les URLs `static/Inter-*.ttf` du dépôt `google/fonts` renvoyaient une page HTML 404 au lieu du fichier : substitution par Arial pour les textes secondaires en attendant une source Inter valide.
+
+---
+
 ## Session 2026-07-05 — Sprint 12 : CLI generate (agrégateur multi-provider)
 
 ### Objectif
