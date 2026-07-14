@@ -54,14 +54,22 @@ Aucun comportement automatique en arrière-plan.
 ## Ce que Motorsport Calendar ne fera pas
 
 - **Pas de serveur web ni d'API REST.** L'outil est un générateur local, pas un service hébergé.
-- **Pas de notifications push.** Les rappels sont délégués à l'application calendrier de l'utilisateur,
-  via les VALARM du fichier ICS.
+- **Pas de notification cloud/push distante.** Les rappels VALARM du fichier ICS restent le
+  mécanisme principal. L'application desktop dispose depuis les Sprints 46/56 d'un moteur de
+  notification interne (`NotificationService`, indépendant de Flet) capable d'alerter
+  l'utilisateur pendant qu'il a l'app ouverte ; aucun service tiers, aucun serveur, aucune
+  donnée envoyée hors de la machine. Le relais vers une vraie notification système OS reste un
+  no-op volontaire (`NullSystemNotifier`) tant qu'aucune solution native propre n'existe dans
+  Flet — voir `docs/DECISIONS.md` (Sprint 56).
 - **Pas de données de résultats, classements ou statistiques.** La portée est : *quand et où
   est la prochaine session*, pas *qui a gagné*.
 - **Pas de gestion de compte ou de profil en ligne.** Aucune donnée personnelle n'est collectée
   ni transmise.
-- **Pas de couverture de sports non-automobiles.** Le périmètre est les disciplines FIA et
-  les séries d'endurance (WEC, ELMS, Le Mans Cup).
+- **Motorsport au sens large, pas uniquement l'automobile.** Le périmètre couvre les
+  monoplaces FIA (F1, F2, F3, F1 Academy, Formula E), l'endurance ACO (WEC, ELMS, Michelin
+  Le Mans Cup), le GT (GT World Challenge Europe/America/Asia, IGTC) et la moto (MotoGP,
+  Moto2, Moto3 — WorldSBK enregistré mais sans source de données fonctionnelle, voir
+  `docs/DATA_SOURCES.md`). Toujours pas de sports hors motorsport (football, etc.).
 - **Pas d'interface mobile native.** La GUI est desktop (Windows, macOS, Linux via Flet).
   Le fichier ICS généré est lui-même compatible mobile via l'application calendrier du téléphone.
 - **Pas de mise à jour automatique des calendriers.** L'utilisateur régénère quand il le souhaite,

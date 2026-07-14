@@ -18,22 +18,21 @@
 
 **motorsport-calendar** fetches race calendars from public APIs and exports them as `.ics` files
 you can subscribe to in Google Calendar, Apple Calendar, Outlook, or any iCalendar-compatible app.
+It ships as a CLI and as a native desktop app (Alpha — Beta packaging and positioning
+already validated, see [`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md)).
 
 ```bash
 # Formula 1 — 2026 season
 motocal generate-f1 2026 f1-2026.ics
 
-# Formula 2 — 2026 season
-motocal generate-f2 2026 f2-2026.ics
-
-# Formula 3 — 2026 season
-motocal generate-f3 2026 f3-2026.ics
-
-# F1 Academy — 2025 season
-motocal generate-f1-academy 2025 f1a-2025.ics
+# WEC — FIA World Endurance Championship
+motocal generate-wec 2026 wec-2026.ics
 
 # All enabled championships in one file
 motocal generate 2026 motorsport-2026.ics
+
+# Desktop app
+motocal-gui
 ```
 
 Import the `.ics` file into your calendar app — every race, qualifying session, and
@@ -44,11 +43,9 @@ practice appears automatically with the correct local time.
 ## Features
 
 - **ICS export** — one VEVENT per session, compatible with every major calendar app
-- **Formula 1** — via [OpenF1](https://openf1.org) (2023+) or [Jolpica](https://jolpi.ca) (1950+)
-- **Formula 2** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT)
-- **Formula 3** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT, 2022+)
-- **F1 Academy** — via [f1calendar open dataset](https://github.com/sportstimes/f1) (MIT, 2023+)
-- **Desktop GUI** — native window via Flet (`motocal-gui`) — year picker, championship checkboxes, file picker
+- **16 working championships** across single-seater, endurance, GT and motorcycle racing — see the table below
+- **Desktop app (Alpha)** — Dashboard, upcoming weekend, personal calendar builder, search, favorites,
+  preferences and notifications, all built on Flet
 - **Extensible architecture** — add a new series in a few files, zero changes elsewhere
 - **HTTP cache** — disk-based JSON cache with configurable TTL; skip with `--refresh`
 - **YAML configuration** — sources, cache path, alarm reminders, opt-out per championship
@@ -64,7 +61,7 @@ practice appears automatically with the correct local time.
 pip install motorsport-calendar
 ```
 
-### CLI + Desktop GUI
+### CLI + Desktop app
 
 ```bash
 pip install "motorsport-calendar[gui]"
@@ -74,7 +71,7 @@ pip install "motorsport-calendar[gui]"
 
 ```bash
 uv tool install motorsport-calendar
-# With GUI:
+# With the desktop app:
 uv tool install "motorsport-calendar[gui]"
 ```
 
@@ -85,6 +82,10 @@ git clone https://github.com/naviss29/motorsport-calendar.git
 cd motorsport-calendar
 uv sync --all-extras
 ```
+
+> Building a standalone desktop binary (no Python required on the target machine) is
+> documented in [`docs/PACKAGING.md`](docs/PACKAGING.md) and
+> [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ---
 
@@ -108,51 +109,36 @@ motocal --help
 
 ## Usage
 
-### Formula 1
+### One championship at a time
+
+Every working championship has its own `generate-<id>` command:
 
 ```bash
-# 2026 season via OpenF1 (cached by default)
-motocal generate-f1 2026 f1-2026.ics
+motocal generate-f1            2026 f1-2026.ics
+motocal generate-f2            2026 f2-2026.ics
+motocal generate-f3            2026 f3-2026.ics
+motocal generate-f1-academy    2025 f1a-2025.ics
+motocal generate-formula-e     2026 formula-e-2026.ics
+motocal generate-wec           2026 wec-2026.ics
+motocal generate-elms          2026 elms-2026.ics
+motocal generate-mlmc          2026 mlmc-2026.ics
+motocal generate-gtwc-europe   2026 gtwc-europe-2026.ics
+motocal generate-gtwc-america  2026 gtwc-america-2026.ics
+motocal generate-gtwc-asia     2026 gtwc-asia-2026.ics
+motocal generate-igtc          2026 igtc-2026.ics
+motocal generate-motogp        2026 motogp-2026.ics
+motocal generate-moto2         2026 moto2-2026.ics
+motocal generate-moto3         2026 moto3-2026.ics
 
-# Force re-download from the API
+# Force re-download from the source instead of using the cache
 motocal generate-f1 2026 f1-2026.ics --refresh
-
-# Historical data (1950+) via Jolpica
-# Set source: jolpica in config.yaml
-motocal generate-f1 1994 f1-1994.ics
 ```
 
-### Formula 2
-
-```bash
-# 2026 FIA Formula 2 season
-motocal generate-f2 2026 f2-2026.ics
-
-# Force re-download
-motocal generate-f2 2026 f2-2026.ics --refresh
-```
-
-### Formula 3
-
-```bash
-# 2026 FIA Formula 3 Championship
-motocal generate-f3 2026 f3-2026.ics
-
-# Force re-download
-motocal generate-f3 2026 f3-2026.ics --refresh
-```
-
-> **Note:** The f1calendar dataset covers F3 from 2022 onwards. Seasons prior to 2022
-> used different session keys (`race1`/`race2`/`race3`) which are not mapped.
-
-### WEC — FIA World Endurance Championship
-
-```bash
-motocal generate-wec 2026 wec-2026.ics
-```
-
-> **Note:** The WEC source is not yet implemented. The command architecture is ready;
-> the data source is on the roadmap.
+> `generate-imsa` and `generate-worldsbk` also exist (full provider architecture, wired
+> into the CLI and config) but currently exit with "source non implémentée" — no public,
+> structured schedule source was found for either championship. See
+> [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) for the investigation. They are hidden
+> from the desktop app's selectors until a real source is found.
 
 ### All enabled championships
 
@@ -165,13 +151,13 @@ If one provider fails (network error, unimplemented source…), the others conti
 A per-provider summary is displayed:
 
 ```
-Génération calendrier 2026 — 3 providers activés…
+Génération calendrier 2026 — 16 providers activés…
   ✓ formula1 : 24 événements
   ✓ formula2 : 14 événements
-  ✓ formula3 : 10 événements
-  ✗ wec : source non implémentée
+  ✓ wec : 8 événements
+  ✗ imsa : source non implémentée
 
-Export terminé : motorsport-2026.ics (48 événements, 182 sessions)
+Export terminé : motorsport-2026.ics (…)
 ```
 
 ### Other commands
@@ -186,9 +172,9 @@ motocal version
 
 ---
 
-## Desktop GUI
+## Desktop app (Alpha)
 
-A native desktop window is available as an optional extra (requires [Flet](https://flet.dev)):
+A native desktop window is available as an optional extra, built with [Flet](https://flet.dev):
 
 ```bash
 pip install "motorsport-calendar[gui]"
@@ -197,15 +183,24 @@ motocal-gui
 python -m motorsport_calendar.gui
 ```
 
-The GUI provides:
-- **Season picker** — current year ±5
-- **Championship checkboxes** — automatically populated from the provider registry
-- **File picker** — native OS save dialog for the `.ics` output
-- **Generate button** — active only when all fields are filled; shows progress while fetching
-- **Per-championship result summary** — ✓ N events / ✗ error message
+The app is organized around 8 pages:
 
-> The GUI uses exactly the same pipeline as the CLI — same providers, same cache, same
-> `config.yaml`, same ICS exporter. No business logic is duplicated.
+- **Tableau de bord** — quick overview: next race, weekend at a glance, what's new
+- **Ce week-end** — every session happening this weekend, across all championships
+- **Mon calendrier** — pick a season and championships, generate an `.ics` file with a native save dialog
+- **Recherche** — find a championship, event, or circuit; results open the matching page directly
+- **Favoris** — star championships to prioritize them across the app
+- **Préférences** — timezone, cache, and notification settings
+- **À propos** — project presentation, tech stack, links
+- **Soutenir le projet** — how to support the project (donations, roadmap voting, feedback)
+
+> The desktop app uses exactly the same pipeline as the CLI — same providers, same cache,
+> same `config.yaml`, same ICS exporter. No business logic is duplicated.
+
+Native OS notifications are wired through a Flet-independent `NotificationService`; see
+[`docs/DECISIONS.md`](docs/DECISIONS.md) for why no native backend is available yet.
+
+To build a standalone desktop binary, see [`docs/PACKAGING.md`](docs/PACKAGING.md).
 
 ---
 
@@ -231,16 +226,17 @@ providers:
     enabled: true
     source: openf1     # openf1.org API — covers 2023 onwards
     # source: jolpica  # api.jolpi.ca (Ergast successor) — covers 1950 onwards
-  formula2:
-    enabled: true
-    source: f1calendar # github.com/sportstimes/f1 (MIT open dataset)
   wec:
     enabled: true
-    source: official   # not yet implemented
+    source: official   # fiawec.com
   # Disable a championship:
-  # wec:
+  # imsa:
   #   enabled: false
 ```
+
+Every other championship (`f2`, `f3`, `f1-academy`, `formula-e`, `elms`, `mlmc`,
+`gtwc-europe`, `gtwc-america`, `gtwc-asia`, `igtc`, `motogp`, `moto2`, `moto3`…) can be
+configured the same way — see `motocal providers` for the full, currently registered list.
 
 ---
 
@@ -251,11 +247,11 @@ config.yaml
      │
      ▼ registry.enabled()
   ┌──────────┬──────────┬──────────┐
-  │Formula 1 │Formula 2 │   WEC    │  …more (auto-discovered)
+  │Formula 1 │   WEC    │  MotoGP  │  …more (auto-discovered)
   │ Provider │ Provider │ Provider │
   └────┬─────┴────┬─────┴────┬─────┘
        │          │          │
-  OpenF1    F1Calendar    Official
+  OpenF1     fiawec.com   Pulselive
   Source      Source       Source
        │          │          │
        ▼          ▼          ▼
@@ -269,7 +265,8 @@ config.yaml
 
 Each provider package **auto-registers** itself at import time via `ProviderRegistry`.
 Each source auto-registers via `SourceRegistry`. The CLI calls `registry.discover()` once —
-no hardcoded lists anywhere.
+no hardcoded lists anywhere. The desktop app's controller (`gui/controller.py`) calls into
+the exact same registry — no separate data path.
 
 ### Key concepts
 
@@ -277,7 +274,10 @@ no hardcoded lists anywhere.
 |---|---|
 | `Provider` | Fetches data from one source and maps it to `list[Event]` |
 | `Source` | Encapsulates the HTTP/scraping logic for one data endpoint |
-| `F1CalendarBaseSource` | Shared base for F2, F3, Academy, Supercup — one class to subclass |
+| `F1CalendarBaseSource` | Shared base for F2, F3, Academy, Formula E — one class to subclass |
+| `AcoSportsEventSource` | Shared base for WEC, ELMS, MLMC (same ACO CMS, JSON-LD) |
+| `PulseliveBase` | Shared base for MotoGP, Moto2, Moto3 (Dorna's official API) |
+| `SroTimetableBase` | Shared base for GTWC Europe/America/Asia and IGTC (SRO's HTML tables) |
 | `ProviderRegistry` | Auto-discovers and holds all registered provider factories |
 | `SourceRegistry` | Auto-discovers and holds all registered source factories |
 | `IcsExporter` | Serialises a `list[Event]` to an RFC 5545 `.ics` file |
@@ -295,22 +295,39 @@ no hardcoded lists anywhere.
 | Formula 2 | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | Recent seasons |
 | Formula 3 | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | 2022 → present |
 | F1 Academy | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | 2023 → present |
-| WEC | 🟡 Architecture ready | fiawec.com (TODO) | Roadmap |
-| Porsche Supercup | 🟡 Planned | f1calendar dataset | Sprint 22 |
-| ELMS | 🔴 Planned | TBD | Future |
+| Formula E | ✅ Available | [f1calendar dataset](https://github.com/sportstimes/f1) (MIT) | Recent seasons |
+| WEC — FIA World Endurance Championship | ✅ Available | fiawec.com (JSON-LD) | Recent seasons |
+| ELMS — European Le Mans Series | ✅ Available | europeanlemansseries.com (JSON-LD) | Recent seasons |
+| Michelin Le Mans Cup | ✅ Available | lemanscup.com (JSON-LD) | Recent seasons |
+| GT World Challenge Europe | ✅ Available | gt-world-challenge-europe.com (HTML) | Recent seasons |
+| GT World Challenge America | ✅ Available | gt-world-challenge-america.com (HTML) | Recent seasons |
+| GT World Challenge Asia | ✅ Available | gt-world-challenge-asia.com (HTML) | Recent seasons |
+| Intercontinental GT Challenge (IGTC) | ✅ Available | intercontinentalgtchallenge.com (HTML) | Recent seasons |
+| MotoGP | ✅ Available | api.pulselive.motogp.com (official Dorna API) | Recent seasons |
+| Moto2 | ✅ Available | api.pulselive.motogp.com (official Dorna API) | Recent seasons |
+| Moto3 | ✅ Available | api.pulselive.motogp.com (official Dorna API) | Recent seasons |
+| IMSA WeatherTech SportsCar Championship | 🔴 Architecture ready, no source found | — | Hidden from the desktop app |
+| World Superbike (WorldSBK) | 🔴 Architecture ready, no source found | — | Hidden from the desktop app |
+
+See [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) for the full per-championship
+investigation, including why IMSA and WorldSBK don't have a working source yet.
 
 ---
 
 ## Roadmap
 
-| Version | Highlights |
-|---|---|
-| **v0.1** ✅ | Formula 1 via OpenF1, WEC architecture, multi-provider CLI, cache, config |
-| **v0.2** ✅ | Formula 2 ✅, JolpicaSource ✅, Data Acquisition Layer ✅, Support Series Framework ✅ |
-| **v0.3** 🚧 | Formula 3 ✅, F1 Academy ✅, Porsche Supercup, OfficialWecSource |
-| **v1.0** | PyPI release, MkDocs documentation, stable public API |
+The project is currently **Alpha**, with Beta preparation work done — the desktop app,
+all 16 working providers, and standalone Linux packaging are in place and validated; see
+[`docs/ROADMAP.md`](docs/ROADMAP.md) for the detailed, per-sprint breakdown, and
+[`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md) for a running log of every sprint.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the detailed per-version breakdown.
+| Milestone | Status |
+|---|---|
+| Multi-provider CLI, cache, config, ICS export | ✅ |
+| 16 working championships across single-seater, endurance, GT and motorcycle racing | ✅ |
+| Desktop app — Dashboard, weekend, calendar builder, search, favorites, preferences, notifications | ✅ Alpha |
+| Standalone desktop packaging (no Python required) | ✅ Linux, 🚧 Windows |
+| PyPI release, stable public API | 🚧 |
 
 ---
 
@@ -333,13 +350,12 @@ uv run ruff check motorsport_calendar tests
 uv run mypy motorsport_calendar
 ```
 
-### Add a support series (F3, Academy, Supercup…)
+### Add a support series sharing the f1calendar dataset (F2, F3, Academy, Formula E…)
 
-Support series share the [f1calendar open dataset](https://github.com/sportstimes/f1).
 Subclass `F1CalendarBaseSource` — only four overrides needed:
 
 ```python
-# providers/formula3/sources/f1calendar.py  ← already implemented in v0.3
+# providers/formula3/sources/f1calendar.py  ← already implemented
 from motorsport_calendar.providers.support_series.f1calendar_base import F1CalendarBaseSource
 from motorsport_calendar.providers.formula3.source import Formula3Source
 from motorsport_calendar.models import Championship, ChampionshipCategory, SessionType
@@ -368,6 +384,9 @@ class F1CalendarSource(F1CalendarBaseSource, Formula3Source):
 ```
 
 Then register in `sources/__init__.py` — one line. That's all.
+
+The same pattern applies to the other shared bases: `AcoSportsEventSource` (WEC, ELMS,
+MLMC), `PulseliveBase` (MotoGP, Moto2, Moto3), `SroTimetableBase` (GTWC \*, IGTC).
 
 ### Add any other provider
 

@@ -1,7 +1,9 @@
 # DATA_SOURCES.md
 
 > Étude des sources de données disponibles pour chaque championnat motorsport.
-> Dernière mise à jour : 2026-07-10 (Sprint 38)
+> Dernière mise à jour : 2026-07-14 — table "Vue d'ensemble" resynchronisée avec le
+> détail par championnat (WEC passée "stub" → "Implémentée" à tort non répercuté
+> depuis le Sprint 48). Le détail par championnat plus bas était déjà à jour.
 
 ---
 
@@ -37,7 +39,7 @@ Pour chaque championnat, on évalue :
 | Formula 3 | Dataset `sportstimes/f1` (GitHub, MIT) | JSON | Non | ✅ Implémentée |
 | F1 Academy | Dataset `sportstimes/f1` (GitHub, MIT) | JSON | Non | ✅ Implémentée |
 | Formula E | Dataset `sportstimes/f1` (GitHub, MIT) | JSON | Non | ✅ Implémentée |
-| WEC | fiawec.com (JSON-LD probable, non confirmé sur une vraie manche) | JSON-LD / HTML | Non | 🟡 Moyen — stub |
+| WEC | fiawec.com (JSON-LD, même CMS ACO que ELMS/MLMC) | JSON-LD | Non | ✅ Implémentée |
 | ELMS | europeanlemansseries.com (JSON-LD schema.org) | JSON-LD | Non | ✅ Implémentée |
 | Michelin Le Mans Cup | lemanscup.com (JSON-LD schema.org) | JSON-LD | Non | ✅ Implémentée |
 | Road to Le Mans | lemanscup.com (round MLMC, pas de championship_id séparé) | JSON-LD | Non | ✅ Implémentée |

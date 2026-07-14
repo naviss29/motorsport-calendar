@@ -524,9 +524,11 @@
   pulselive.com`) injoignable depuis l'extérieur. Pistes à explorer : automatisation
   navigateur (Playwright — coût de dépendance à évaluer), contact direct Dorna/WorldSBK
   pour un accès partenaire, ou surveiller une éventuelle publication future d'un hôte API
-  public équivalent à `api.pulselive.motogp.com`.
-- [ ] 🟢 Vérification visuelle réelle du wizard/"Ce week-end" avec MotoGP/Moto2/Moto3
-  affichés, sur un poste avec affichage.
+  public équivalent à `api.pulselive.motogp.com`. Depuis le Sprint 57, WorldSBK (comme
+  IMSA) est masquée des sélecteurs de la GUI (`_HIDDEN_FROM_GUI`) en attendant une vraie
+  source — n'apparaît donc plus nulle part côté app tant que ce point reste ouvert.
+- [ ] 🟢 Vérification visuelle réelle de "Mon calendrier"/"Ce week-end" avec
+  MotoGP/Moto2/Moto3 affichés, sur un poste avec affichage.
 - [ ] 🟢 Une fois `OfficialWorldSbkSource` implémentée : ajouter `worldsbk` (et
   `motogp`/`moto2`/`moto3` si des logos sont fournis) à
   `championship_assets.py::_LOGO_FILENAMES`.
@@ -551,7 +553,7 @@
 - [ ] 🟢 Ajouter `gtwc-europe`/`gtwc-america`/`gtwc-asia`/`igtc` à
   `championship_assets.py::_LOGO_FILENAMES` le jour où des logos sont prévus
   (volontairement absent ce sprint — "aucun travail sur les icônes").
-- [ ] 🟢 Vérification visuelle réelle du wizard/"Ce week-end" avec les 4 nouveaux
+- [ ] 🟢 Vérification visuelle réelle de "Mon calendrier"/"Ce week-end" avec les 4 nouveaux
   championnats GT affichés, sur un poste avec affichage.
 - [ ] 🟡 Autres championnats GT candidats (SRO organise aussi le British GT Championship,
   l'Italian GT Championship, etc., probablement sur le même CMS `/event/{id}/{slug}`) —
@@ -570,9 +572,10 @@
   prose non structurée. Pistes à explorer : automatisation navigateur (Playwright — coût
   de dépendance à évaluer), contact direct IMSA/SRO pour un accès partenaire, ou surveiller
   une éventuelle publication future d'un flux structuré.
-- [ ] 🟢 Vérification visuelle réelle du wizard/"Ce week-end" avec IMSA affiché (stub —
-  n'affichera jamais de carte tant qu'`OfficialImsaSource` n'est pas implémentée), sur un
-  poste avec affichage.
+- [x] 🟢 Vérification visuelle de "Mon calendrier"/"Ce week-end" avec IMSA — **devenue sans
+  objet Sprint 57** : IMSA (toujours un stub `NotImplementedError`) a été masquée des
+  sélecteurs de la GUI (`_HIDDEN_FROM_GUI`, `gui/controller.py`) en attendant une vraie
+  source, elle n'apparaît donc plus nulle part côté app.
 - [ ] 🟢 Une fois `OfficialImsaSource` implémentée : ajouter `imsa` à
   `championship_assets.py::_LOGO_FILENAMES` si un logo officiel est fourni.
 
@@ -580,11 +583,9 @@
 
 ## Extension Endurance — suites possibles (Sprint 35)
 
-- [ ] 🔴 `OfficialWecSource` — investiguer une vraie manche WEC (pas un Prologue) sur
-  fiawec.com pour confirmer qu'elle partage le schéma JSON-LD `SportsEvent`/`subEvent`
-  d'ELMS/MLMC ; si oui, brancher sur `AcoSportsEventSource` (même patron que ce sprint,
-  `_series_key="wec"`, session map à établir depuis une vraie page). Remplacerait le stub
-  `NotImplementedError` par une vraie implémentation.
+- [x] 🔴 `OfficialWecSource` — **terminé Sprint 48** : fiawec.com confirmé sur le même
+  schéma JSON-LD `SportsEvent`/`subEvent` qu'ELMS/MLMC, branché sur `AcoSportsEventSource`
+  comme anticipé ici.
 - [ ] 🟡 Porsche Supercup — probablement sur le dataset f1calendar (pas ACO) ; vérifier le
   vrai schéma JSON avant d'écrire quoi que ce soit, suivre le patron Formula E plutôt que
   celui d'ELMS/MLMC.
@@ -592,8 +593,8 @@
   logos sont prévus (volontairement absent ce sprint — "aucun travail sur les icônes").
 - [ ] 🟢 Compléter `aco_series/circuit_data.py` au fil des nouveaux circuits ELMS/MLMC
   rencontrés sans mapping (même pattern de repli propre que les autres championnats).
-- [ ] 🟢 Vérification visuelle réelle du wizard/"Ce week-end" avec ELMS/MLMC affichés, sur
-  un poste avec affichage.
+- [ ] 🟢 Vérification visuelle réelle de "Mon calendrier"/"Ce week-end" avec ELMS/MLMC
+  affichés, sur un poste avec affichage.
 
 ---
 
@@ -608,10 +609,11 @@
   f1calendar (mentionné dans la docstring de `F1CalendarBaseSource`, déjà anticipé dans
   `display_names.py`) — vérifier le vrai schéma JSON avant d'écrire quoi que ce soit,
   suivre exactement le patron Formula E de ce sprint.
-- [ ] 🟢 ELMS — déjà anticipée dans `display_names.py`, source de données encore à
-  identifier (pas confirmé sur le dataset f1calendar).
-- [ ] 🟢 Vérification visuelle réelle du wizard/"Ce week-end" avec Formula E affichée, sur
-  un poste avec affichage.
+- [x] 🟢 ELMS — **terminé Sprint 35** (le sprint suivant celui-ci) : pas sur le dataset
+  f1calendar, mais scrapée en JSON-LD depuis europeanlemansseries.com via
+  `AcoSportsEventSource`.
+- [ ] 🟢 Vérification visuelle réelle de "Mon calendrier"/"Ce week-end" avec Formula E
+  affichée, sur un poste avec affichage.
 
 ---
 
@@ -677,9 +679,9 @@
 
 ## Ce week-end — suites possibles (Sprint 29)
 
-- [ ] 🔴 `OfficialWecSource` — tant qu'elle reste un stub `NotImplementedError`, "Ce week-end"
-  n'affichera jamais de carte Endurance en conditions réelles (voir aussi la tâche WEC
-  existante plus bas, partagée avec `generate-wec`).
+- [x] 🔴 `OfficialWecSource` — **terminé Sprint 48** : "Ce week-end" affiche désormais WEC
+  en conditions réelles (voir aussi la tâche WEC équivalente plus bas, partagée avec
+  `generate-wec`).
 - [ ] 🟢 Ancrer le découpage vendredi-dimanche sur le fuseau du circuit plutôt que UTC —
   cas limite pour les circuits très à l'est (Japon, Singapour, Chine, Australie).
 - [ ] 🟢 Compléter `_COUNTRY_LABELS` (`gui/upcoming_weekend.py`) au fil des circuits
@@ -710,13 +712,16 @@
 
 ## Release Alpha Phase 2 — suites possibles (Sprint 26)
 
-- [ ] 🔴 Intégrer les SVG définitifs du Brand Set v1.0 quand livrés dans le dépôt
-  - Remplacer les appels `theme.logo_placeholder(...)` listés dans `gui/assets/logo/README.md`
+- [~] 🔴 Intégrer les SVG définitifs du Brand Set v1.0 — **SVG livrés** (`logo-horizontal.svg`,
+  `logo-vertical.svg`, `mc-icon.svg` dans `gui/assets/logo/`, branding officiel mergé), mais
+  **le câblage reste à faire** : `theme.logo_placeholder(...)` est toujours l'appel utilisé
+  dans `theme.py`/`views/about.py`, les SVG ne sont pas encore chargés à sa place.
   - Estimation : 30min (layout déjà prêt, pas de rework attendu)
 - [ ] 🟡 Audit mypy `main_view.py` — signatures `on_click` Flet 0.80 vs 0.85.3 installé
   - 21 erreurs préexistantes avant Sprint 26 (26 après, proportionnel aux handlers du wizard)
   - Estimation : 2-3h (vérifier les stubs Flet actuels, éventuellement caster les handlers)
-- [ ] 🟢 Écran/capture réels du wizard une fois un environnement graphique disponible
+- [ ] 🟢 Écran/capture réels de l'assistant "Mon calendrier" (devenu depuis une page
+  unique réorganisée, Sprint 43) une fois un environnement graphique disponible
   - Ce sprint a été vérifié par tests unitaires (100 % theme/calendar/models) + simulation
     de parcours via une fausse `Page` (aucun display dans ce sandbox)
 

@@ -47,7 +47,7 @@
 - Linter : `ruff` (voir `ruff.toml`).
 - Type checker : `mypy` (voir `mypy.ini`).
 - Pre-commit hooks actifs.
-- Couverture cible : ≥ 85 % (actuellement 87 %).
+- Couverture cible : ≥ 85 % (actuellement ~97 % — voir `docs/AI_CONTEXT.md`).
 
 ## 7. Git
 

@@ -11,7 +11,8 @@
 - **Version** : 0.2.0 (alpha)
 - **Phase** : Sprint 59 — Correction du packaging Flet (le build Linux démarre réellement désormais — `ModuleNotFoundError` du Sprint 58 corrigé et vérifié par un rebuild + lancement réel du binaire, voir `docs/PACKAGING.md` §7) ✅
 - **Tests** : 2041 passants (1 skip Windows-only), 0 échouants — couverture ~97 %
-- **Branche** : `master`
+- **Branche** : `master` — Sprints 34-59 fusionnés via PR #1
+  (`feat/sprints-34-59-alpha-desktop-gui`), `master` local et `origin/master` synchronisés
 
 ---
 

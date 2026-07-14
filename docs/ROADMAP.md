@@ -618,40 +618,26 @@
 
 ---
 
-## v0.4.0 — Desktop Edition Phase 2 (Sprint 25)
+## Backlog non daté (mis à jour 2026-07-14)
+
+> Ce bloc était à l'origine trois sections de planification pré-Sprint 25
+> ("v0.4.0 Phase 2", "v0.5.0", "v1.0.0") jamais purgées au fur et à mesure
+> que leur contenu était réalisé (`OfficialWecSource` ✅ Sprint 48,
+> `ELMSProvider` ✅ Sprint 35 — tous deux listés ici comme encore à faire
+> jusqu'à cette mise à jour). Regroupé en un seul backlog, débarrassé des
+> items déjà faits ; ce qui reste est vérifié contre l'état réel du code
+> et de `docs/RELEASE.md`.
 
 | Fonctionnalité | Priorité |
 |---|---|
-| Packaging Windows `.exe` via `flet build windows` | 🔴 HAUTE |
-| Mémorisation du dernier fichier de sortie | 🟡 MOYENNE |
-| Option `--refresh` dans la GUI (case à cocher) | 🟡 MOYENNE |
-| Aperçu du nombre de sessions avant export | 🟡 MOYENNE |
-| Icône d'application personnalisée | 🟢 BASSE |
-| Drag & drop du fichier `.ics` généré | 🟢 BASSE |
-
----
-
-## v0.5.0 — Nouvelles sources
-
-Sources documentées dans `docs/DATA_SOURCES.md`.
-
-| Fonctionnalité | Source | Priorité |
-|---|---|---|
-| `OfficialWecSource` — calendrier FIA WEC | Scraping `fiawec.com` (voir DATA_SOURCES.md) | 🔴 HAUTE |
-| `ELMSProvider` — European Le Mans Series | Scraping `europeanlemansseries.com` (XHR first) | 🔴 HAUTE |
-| `PorscheSupercupProvider` | Scraping `racing.porsche.com` + venues F1 | 🟢 BASSE |
-| Export JSON (machine-readable) | — | 🟢 BASSE |
-| `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | — | 🟡 MOYENNE |
-
----
-
-## v1.0.0 — Version stable
-
-| Fonctionnalité | Priorité |
-|---|---|
+| Packaging Windows `.exe` via `flet build windows` — procédure documentée (`docs/RELEASE.md` §3) mais jamais exécutée pour de vrai (nécessite une machine Windows) | 🔴 HAUTE |
 | Publication PyPI (`pip install motorsport-calendar`) | 🔴 HAUTE |
-| Documentation MkDocs complète (API + guides utilisateur) | 🔴 HAUTE |
-| API Python publique documentée et stable | 🔴 HAUTE |
-| Support Python 3.12 + 3.13 validé en CI | ✅ |
-| Badge couverture dans README | 🟡 MOYENNE |
+| `PorscheSupercupProvider` — scraping `racing.porsche.com` + venues F1 (voir `docs/DATA_SOURCES.md`) | 🟢 BASSE |
+| Mémorisation du dernier fichier de sortie (Mon calendrier) | 🟡 MOYENNE |
+| `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | 🟡 MOYENNE |
+| Export JSON (machine-readable) | 🟢 BASSE |
+| Documentation MkDocs complète (API + guides utilisateur) | 🟡 MOYENNE |
+| API Python publique documentée et stable | 🟡 MOYENNE |
+| Badge couverture dans README | 🟢 BASSE |
 | GitHub Release avec assets ICS précalculés | 🟢 BASSE |
+| Source réelle IMSA / WorldSBK, si une API publique apparaît un jour (voir `docs/DATA_SOURCES.md`) | 🟢 BASSE |
