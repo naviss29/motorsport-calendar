@@ -165,15 +165,15 @@ installation automatique").
 
 The Linux build was validated for real against this repository during
 Sprint 49 (Flutter SDK installed, entry point/module-name/assets
-resolution all confirmed working — see §5). The Windows build command and
-prerequisites above are transcribed precisely from Flet's official
-documentation but were **not executed** during this sprint — no Windows
-machine was available in this environment. Nothing in this project's own
-code is Windows-specific in a way that would make the build fail
-differently from any other Flet project; the cross-platform path handling
-fixed this sprint (`utils/paths.py`) specifically ensures the *packaged
-app's own runtime behavior* (preferences, cache) is correct on Windows,
-independently of whether the Windows build itself has been executed here.
+resolution all confirmed working — see §5). **The Windows build has now
+also been validated for real, on an actual Windows 11 machine — see §8.**
+Nothing in this project's own code turned out to be Windows-specific in a
+way that made the build fail differently from any other Flet project; the
+two blockers hit (§8) were both machine/toolchain-level, not caused by
+this repository's own code. The cross-platform path handling from
+Sprint 49 (`utils/paths.py`) ensures the *packaged app's own runtime
+behavior* (preferences, cache) is correct on Windows — confirmed by the
+full test suite passing for real on Windows for the first time (§8).
 
 ---
 
@@ -589,6 +589,124 @@ sync with the root manifest, the `tool.flet.dev_packages` redirect
 resolves to a real, installable project root, and the declared entry
 module (`app`) actually exists on disk.
 
+---
+
+## 8. Sprint RC-01 — Windows build, validated for real on Windows 11
+
+The Windows build (§3) had never been executed on an actual Windows
+machine until this sprint. Run on a real Windows 11 24H2/25H2 machine,
+from a fresh environment with none of Flet's prerequisites pre-installed
+— every gap below was hit and fixed for real, not anticipated from
+documentation.
+
+### Machine-level prerequisites, confirmed the hard way
+
+1. **Visual Studio Build Tools 2022, "Desktop development with C++"
+   workload** — absent on this machine, installed via `winget install
+   --id Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait
+   --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`.
+   Confirmed by Flutter's own `flutter doctor` afterward: `[√] Visual
+   Studio - develop Windows apps`.
+2. **Windows Developer Mode** — disabled by default
+   (`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock`),
+   required for the symlink support `flet build` needs; enabling it
+   requires Administrator privileges, not something a normal user-level
+   shell can do unattended.
+3. **`rich`'s legacy Windows console renderer crashes on a non-UTF-8
+   codepage.** `flet build`'s progress UI (via `rich.Live`) raised
+   `UnicodeEncodeError: 'charmap' codec can't encode character '●'`
+   immediately on first run, before any real build work started, on a
+   terminal using the default `cp1252`/`850` codepage rather than UTF-8.
+   Fix: set `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` (and/or `chcp 65001`)
+   before invoking `flet build` — an environment-level fix, no project
+   code touched. Not specific to this project; any `flet build windows`
+   invocation from a non-UTF-8 Windows console hits this.
+4. **The Visual Studio-bundled `cmake.exe` used by Flutter's Windows
+   toolchain is a 32-bit (`i386`) binary**, confirmed via `file
+   cmake.exe`. CMake's generated `cmake_install.cmake` tries to copy
+   `C:/WINDOWS/System32/vcruntime140_1.dll` (a genuinely x64-only DLL —
+   it has no 32-bit build at all) into the release bundle as part of
+   `InstallRequiredSystemLibraries`. Being a 32-bit process, this
+   `cmake.exe` is transparently WOW64-redirected to
+   `C:\WINDOWS\SysWOW64\` for that path — where the file can never exist,
+   since no 32-bit version of it is ever produced by any Microsoft
+   installer. Result: `CMake Error ... file INSTALL cannot find
+   "C:/WINDOWS/System32/vcruntime140_1.dll"`, failing the whole
+   `INSTALL.vcxproj` target (MSBuild surfaces this as a wall of generic
+   `MSB3073` batch-echo noise, not the real error — the actual cause only
+   showed up by re-running the failing `cmake -P cmake_install.cmake`
+   command directly, bypassing MSBuild's non-verbose logger). **Fix**
+   (community-documented workaround for this known Flutter/Windows/CMake
+   interaction, confirmed working here): copy the real
+   `C:\WINDOWS\System32\vcruntime140_1.dll` to
+   `C:\WINDOWS\SysWOW64\vcruntime140_1.dll` (Administrator privileges
+   required) — an additive, easily-reversible file copy, never an
+   overwrite. This satisfies the WOW64-redirected read; the byte content
+   copied into the app's own bundle is still the correct real x64 DLL.
+   Installing both the x64 *and* x86 Microsoft Visual C++ Redistributable
+   via winget was necessary but **not sufficient** on its own — the x86
+   redistributable never ships this specific file, by design.
+
+None of the four items above are caused by this project's own code or
+build manifest (§7) — all are properties of the Windows machine/toolchain
+that any Flet Windows-desktop build hits the first time it's run in a
+fresh environment.
+
+### Result, verified not assumed
+
+- `flet build windows motorsport_calendar/gui --module-name app`
+  completed with `Successfully built your Windows app!`.
+- Output: `motorsport_calendar\gui\build\windows\motorsport-calendar.exe`
+  (314 KB), full bundle **105 MB**. `site-packages/motorsport_calendar/`
+  confirmed correctly nested (same shape as the Linux build, §7),
+  `motorsport_calendar-0.2.0.dist-info` confirms the right version was
+  installed.
+- **Binary launched for real, window rendered and visually inspected —
+  the first time in this project's history** (every prior GUI sprint
+  noted no display compositor was available to confirm rendering). Native
+  window title read `"gui"` at first paint (compiled default, expected —
+  see §7), then correctly updated to `"Motorsport Calendar"` once Python
+  startup finished setting `page.title`. No console.log traceback at any
+  point (`%LOCALAPPDATA%\motorsport-calendar\console.log` stayed absent —
+  the same healthy signal already established for Linux). Closed cleanly
+  via the window's own close button, process exited on its own (no forced
+  kill needed).
+- All 8 pages visually walked through with real screenshots (Dashboard,
+  Ce week-end, Mon calendrier, Recherche, Mes favoris, Préférences, À
+  propos, Soutenir le projet) — real data rendered correctly in every
+  one (e.g. Dashboard: 17 championnats, 180 événements, 865 sessions;
+  Mon calendrier: category tree with live counts; Recherche: 108 live
+  results). No crash, no broken widget, no theme issue on any page.
+- Two real, pre-existing test bugs surfaced by running the suite on
+  Windows for the first time (both in test assumptions, not application
+  code — see `tests/test_config_service.py` and
+  `tests/test_utils_paths.py`): a `.cache`-in-path assertion that's
+  Linux-only by the code's own documented design, and two `Path.home()`
+  fallback tests that cleared the *entire* environment (`clear=True`),
+  which only coincidentally worked on Linux (`pwd` database fallback,
+  environment-independent) and legitimately can't work on Windows
+  (`Path.home()` has no non-environment fallback there). Fixed by
+  correcting the test assumptions to match each platform's real
+  behavior — no application code changed. Full suite: **2042 passed, 0
+  skipped** (the 1 previously-Windows-only-skipped test now runs for
+  real and passes).
+- One pre-existing cosmetic UI bug found during the visual walkthrough:
+  the "Année par défaut" dropdown on the Préférences page renders
+  truncated (`"Année en co"` instead of `"Année en cours"`) — a
+  pre-existing `Dropdown` sizing issue, not introduced by this sprint,
+  not blocking a Beta, left for a future UI-polish pass (added to
+  `docs/TODO.md`).
+
+### Not yet covered
+
+- This was one real Windows 11 machine, one Windows build/Visual Studio
+  version combination. A different Windows edition/VS version could
+  plausibly hit the same `vcruntime140_1.dll`/WOW64 issue (it is a
+  property of Flet/Flutter's toolchain, not this specific machine) —
+  worth confirming again the next time a Beta is actually cut on a
+  different machine.
+- No installer, no code signing, no CI-driven build — unchanged from §4's
+  scope note and `docs/RELEASE.md` §8's known gaps.
+
 See `docs/RELEASE.md` for the proposed `Release/` folder layout and the
-step-by-step procedure to generate and publish a Beta build once §6.3 is
-resolved.
+step-by-step procedure to generate and publish a Beta build.

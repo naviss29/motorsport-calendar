@@ -103,10 +103,13 @@ flet build windows motorsport_calendar/gui --module-name app
 
 Output: `motorsport_calendar\gui\build\windows\` — a folder containing
 the compiled `.exe` and its bundled dependencies, `icon_windows.ico`
-used automatically for the executable/taskbar icon (see
-`docs/PACKAGING.md` §3 for what's not yet verified about this build —
-it has never been produced for real in this environment, no Windows
-machine available).
+used automatically for the executable/taskbar icon. **Validated for real
+on a Windows 11 machine, Sprint RC-01** — see `docs/PACKAGING.md` §8 for
+the full account, including two machine-level gaps hit and fixed on a
+fresh environment (`rich`'s console renderer needs `PYTHONUTF8=1` on a
+non-UTF-8 codepage; the VS-bundled 32-bit `cmake.exe` needs
+`vcruntime140_1.dll` mirrored into `SysWOW64` due to WOW64 redirection —
+neither caused by this project's own code).
 
 ### Packaging the Windows build for distribution
 
@@ -239,16 +242,21 @@ Notes:
 
 - ~~The Linux build's `ModuleNotFoundError` blocker~~ — **fixed**, see
   `docs/PACKAGING.md` §7.
+- ~~The Windows build fix is unverified~~ — **fixed and verified for
+  real on a Windows 11 machine, Sprint RC-01**, see `docs/PACKAGING.md`
+  §8 (build succeeded, binary launched, all 8 GUI pages visually
+  confirmed rendering correctly, clean shutdown).
 - The embedded build version still reads `1.0.0` instead of the real
   `0.2.0` (cosmetic, `docs/PACKAGING.md` §7's own note) — not blocking
   a release, but worth a narrower follow-up fix.
-- The Windows build fix is unverified — the same manifest/mechanism
-  should apply identically (§3), but has never been run on a real
-  Windows machine.
+- A pre-existing cosmetic UI bug found during the Sprint RC-01 visual
+  walkthrough: the "Année par défaut" dropdown on the Préférences page
+  truncates its text (`"Année en co"`) — not blocking, added to
+  `docs/TODO.md`.
 - No CI workflow runs any of this automatically yet — every step above
   is manual. A future GitHub Actions workflow triggered on tag push
-  could run §2/§5/§6 (Linux only; §3 still needs a Windows runner) —
-  tracked in `docs/TODO.md`, not attempted this sprint.
+  could run §2/§5/§6 (Linux) and, with a Windows runner, §3 — tracked in
+  `docs/TODO.md`, not attempted this sprint.
 - No code signing (Windows Authenticode, Linux package signing) — a
   Beta distributed to a small/trusted audience can reasonably skip this;
   a wider public release should not.

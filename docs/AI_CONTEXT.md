@@ -1,16 +1,16 @@
 # AI_CONTEXT.md
 
 > Fichier de reprise rapide pour une IA. Mis à jour après chaque session.
-> Dernière mise à jour : 2026-07-14 (Sprint 59)
+> Dernière mise à jour : 2026-07-14 (Sprint RC-01)
 
 ---
 
 ## État du projet
 
 - **Nom** : motorsport-calendar
-- **Version** : 0.2.0 (alpha)
-- **Phase** : Sprint 59 — Correction du packaging Flet (le build Linux démarre réellement désormais — `ModuleNotFoundError` du Sprint 58 corrigé et vérifié par un rebuild + lancement réel du binaire, voir `docs/PACKAGING.md` §7) ✅
-- **Tests** : 2041 passants (1 skip Windows-only), 0 échouants — couverture ~97 %
+- **Version** : 0.2.0 (alpha, phase Release Candidate)
+- **Phase** : Sprint RC-01 — Validation Windows (le build Windows est désormais vérifié pour de vrai sur une machine Windows 11 — build, lancement, rendu visuel des 8 pages, fermeture propre, voir `docs/PACKAGING.md` §8) ✅
+- **Tests** : 2042 passants (0 skip — le skip Windows-only tourne désormais pour de vrai), 0 échouants — couverture ~97 %
 - **Branche** : `master` — Sprints 34-59 fusionnés via PR #1
   (`feat/sprints-34-59-alpha-desktop-gui`), `master` local et `origin/master` synchronisés
 
@@ -191,12 +191,18 @@ motorsport_calendar/
 
 59. **Correction du packaging Flet (Sprint 59)** — objectif (mission directe, pas un brief de sprint numéroté par l'utilisateur, mais documentée avec la même rigueur) : corriger le blocage identifié au Sprint 58, en identifiant d'abord la méthode officiellement recommandée par Flet, sans bricolage ni casse du flux de développement actuel. **Découverte en cours de route** : le diagnostic du Sprint 58 (dépendances manquantes) était correct mais incomplet — l'appliquer seul (une `pyproject.toml` dupliquant les 9 dépendances dans `gui/`) a été testé pour de vrai (rebuild + relance du binaire) et a produit exactement la même erreur `ModuleNotFoundError`. Cause additionnelle identifiée : `flet build` zip le *contenu* du dossier ciblé (`motorsport_calendar/gui/`), aplati, sans jamais l'envelopper dans un paquet `motorsport_calendar.` — aucune liste de dépendances, aussi complète soit-elle, ne fait résoudre un import absolu (`from motorsport_calendar.gui... import`) contre un bundle aplati. **Correctif retenu** : `motorsport_calendar/gui/pyproject.toml` (nouveau fichier, manifeste de build uniquement, jamais lu par pip/hatchling pour l'installation normale) déclare exactement 2 dépendances (`flet`, `motorsport-calendar`) et utilise `tool.flet.dev_packages` — le mécanisme officiel de Flet pour "une dépendance développée localement, pas encore sur PyPI" (confirmé en lisant `flet_cli/commands/build_base.py`) — pour installer le projet lui-même depuis sa racine réelle (`../..`) comme un vrai paquet pip, correctement imbriqué, via la configuration hatchling déjà existante à la racine (`packages = ["motorsport_calendar"]`, rien de nouveau à maintenir). Installer le projet ainsi résout aussi ses propres dépendances déclarées de façon transitive — **une seule source de vérité**, jamais une liste dupliquée à synchroniser manuellement (contrairement à la première tentative). La commande de build documentée reste inchangée (`flet build linux motorsport_calendar/gui --module-name app`), tout comme son emplacement de sortie — le scaffold Flutter existant a donc pu être réutilisé pour un rebuild rapide (~25 secondes) plutôt que régénéré intégralement. **Vérifié pour de vrai, pas supposé** : rebuild complet exécuté deux fois (une fois par tentative), `site-packages/motorsport_calendar/` confirmé correctement imbriqué (`core/`/`providers/`/`config/`/`cache/`/`exporters/`/`gui/`, version `0.2.0`), binaire relancé deux fois (`./motorsport-calendar`, nom corrigé) — aucune trace d'erreur dans `~/.cache/motorsport-calendar/console.log` (vide les deux fois, contre une trace systématique avant le correctif), processus resté actif bien au-delà du point où l'ancien build plantait instantanément. Identité de l'application corrigée au passage (même cause racine) : exécutable/ID d'application/titre de fenêtre natif passent de `gui`/`com.flet.gui`/`"gui"` à `motorsport-calendar`/`com.flet.motorsport-calendar`/`"motorsport-calendar"`. **Non vérifié** : aucune confirmation visuelle réelle d'une fenêtre rendue (pas de compositeur d'affichage réel dans cet environnement, même limitation que chaque sprint GUI) — mais le crash Python au démarrage, le bug concret demandé à corriger, est définitivement résolu. **Non résolu** : la version embarquée dans le build affiche encore `1.0.0` au lieu de `0.2.0` malgré `project.version = "0.2.0"` dans le manifeste — piste non retracée jusqu'à sa cause exacte (cosmétique, n'affecte ni le démarrage ni le comportement de l'app). `docs/PACKAGING.md` §6 conservé intact comme trace historique de l'audit ; §7 (nouveau) documente le correctif. `docs/RELEASE.md` mis à jour (l'avertissement de blocage retiré, remplacé par une confirmation). Tests : `TestFletBuildManifest` (8 tests, `tests/test_packaging.py`) — garde-fou vérifiant que le manifeste de build ne redéclare jamais les dépendances racine (seulement `flet` + le projet lui-même), que `project.name`/`version` restent synchronisés avec la racine, et que la redirection `tool.flet.dev_packages` pointe vers un vrai projet installable. Aucune modification métier : `pyproject.toml` racine jamais touché (diff `git diff pyproject.toml` confirmé provenir uniquement de dérive historique non commise, antérieure à cette session) ; `motocal`/`motocal-gui`/`pip install -e .[gui]` re-testés et confirmés inchangés. **2041 tests total**.
 
+60. **Validation Windows (Sprint RC-01)** — objectif unique (phase Release Candidate, développement fonctionnel gelé) : valider pour de vrai le packaging Windows du correctif Sprint 59, jamais exécuté faute de machine Windows disponible jusqu'ici. Machine de départ sans aucun prérequis : Visual Studio Build Tools 2022 (workload C++) installé via winget, Developer Mode activé par l'utilisateur (droits Administrateur requis, hors de portée d'un shell non élevé), `.venv` créé et peuplé (`pip install -e ".[gui,dev]"`, Python 3.14, flet 0.85.3). **Deux blocages machine/toolchain rencontrés et corrigés, aucun causé par le code du projet** : (1) le rendu console `rich` de `flet_cli` plantait instantanément (`UnicodeEncodeError` sur le caractère `●`) sur un terminal en page de code non-UTF-8 — corrigé par `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` avant le build ; (2) la compilation native réussissait mais l'étape d'installation CMake échouait (`file INSTALL cannot find "C:/WINDOWS/System32/vcruntime140_1.dll"`) — cause racine confirmée en relançant directement `cmake -P cmake_install.cmake` (MSBuild n'affichait que du bruit `MSB3073` générique) : le `cmake.exe` fourni avec Visual Studio Build Tools est un binaire 32 bits, redirigé par WOW64 vers `SysWOW64` pour tout accès à `System32` — or `vcruntime140_1.dll` est strictement réservée à x64 (optimisation `/d2FH4`), sans build 32 bits possible par construction ; installer le VC++ Redistributable x64 **et** x86 via winget était nécessaire mais insuffisant. Corrigé en copiant manuellement `vcruntime140_1.dll` vers `SysWOW64` (droits Administrateur requis, fait par l'utilisateur) — ajout pur, réversible, le contenu copié dans le bundle final reste le vrai binaire x64. **Build réussi et vérifié pour de vrai** : `motorsport-calendar.exe` (314 Ko), bundle 105 Mo, `site-packages/motorsport_calendar/` correctement imbriqué (même structure que Linux Sprint 59), version 0.2.0 confirmée. **Binaire lancé et contrôlé visuellement pour de vrai — une première pour ce projet** (chaque sprint GUI précédent notait l'absence de compositeur d'affichage) : titre de fenêtre natif `"gui"` au premier rendu (défaut compilé attendu) puis `"Motorsport Calendar"` une fois le démarrage Python terminé, aucune trace dans `console.log`. Les 8 pages parcourues avec captures d'écran réelles (Tableau de bord : 17 championnats/180 événements/865 sessions ; Mon calendrier : arbre de catégories avec compteurs live ; Recherche : 108 résultats live ; Ce week-end, Mes favoris, Préférences, À propos, Soutenir le projet) — aucun crash, aucun widget cassé, aucun problème de thème. Fermeture propre via le bouton natif, processus terminé de lui-même. **Un bug cosmétique pré-existant trouvé** : le dropdown "Année par défaut" (Préférences) tronque son texte ("Année en co") — non bloquant, ajouté à `docs/TODO.md`. **Suite de tests** : 3 échecs initiaux, tous des bugs de *test* (jamais de code applicatif) jamais révélés faute d'avoir tourné sur Windows réel — une assertion `.cache`-dans-le-chemin Linux-only sur un test censé être cross-plateforme, et deux tests de repli `Path.home()` qui vidaient tout l'environnement (`clear=True`, neutralisant `USERPROFILE`) au lieu de ne retirer que la variable pertinente comme le fait déjà l'équivalent Linux du même fichier. Corrigés sans toucher au code applicatif. **2042 tests total, 0 skip** (le skip Windows-only tourne désormais pour de vrai et passe). Ruff 0 erreur, mypy inchangé (41/176, dette déjà documentée). Documentation mise à jour : `docs/PACKAGING.md` (nouveau §8), `docs/RELEASE.md` (§3/§8), `docs/ROADMAP.md`, `docs/TODO.md`, `README.md`.
+
 ---
 
 ## Fonctionnalités en cours / prochaines
 
-**Prochaines tâches recommandées** (après Sprint 59) :
+**Prochaines tâches recommandées** (après Sprint RC-01) :
 
+-24. **Corriger la troncature du dropdown "Année par défaut"**
+    (Préférences, trouvé Sprint RC-01) — affiche "Année en co" au lieu de
+    "Année en cours", probablement une largeur de `Dropdown` insuffisante.
+    Non bloquant pour la Beta.
 -23. **Retracer pourquoi la version embarquée du build reste `1.0.0`**
     malgré `project.version = "0.2.0"` dans `motorsport_calendar/gui/
     pyproject.toml` (Sprint 59, non résolu, cosmétique) — `flet_cli`
@@ -206,15 +212,17 @@ motorsport_calendar/
     `pubspec.yaml` généré, ou un flag CLI `--build-version` séparé à
     passer explicitement) si l'exactitude de ce fichier devient un jour
     nécessaire.
--22bis. **Vérifier le correctif Sprint 59 sur le build Windows** — le
-    même manifeste/mécanisme devrait s'appliquer identiquement (aucune
-    logique spécifique à Linux dans le correctif), mais jamais exécuté
-    sur une vraie machine Windows dans cet environnement.
+-22bis. ~~Vérifier le correctif Sprint 59 sur le build Windows~~ — **fait,
+    Sprint RC-01** : construit, lancé et contrôlé visuellement pour de
+    vrai sur une machine Windows 11.
 -22ter. **Vérification visuelle réelle du binaire Linux corrigé** — le
     crash Python est résolu et vérifié, mais aucun rendu de fenêtre réel
     n'a pu être confirmé (pas de compositeur d'affichage dans cet
     environnement) ; à confirmer sur un poste avec affichage avant toute
-    distribution publique.
+    distribution publique. Le binaire Windows, lui, a été rendu et
+    contrôlé pour de vrai (Sprint RC-01) — le code GUI étant partagé
+    entre plateformes, ceci réduit le risque résiduel côté Linux sans
+    complètement le lever.
 -22quater. **Ajouter un fichier `.desktop` Linux** — aucune entrée de menu
     Applications aujourd'hui, l'utilisateur doit lancer l'exécutable
     directement ; pas nécessaire pour une Beta distribuée en archive

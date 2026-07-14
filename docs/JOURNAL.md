@@ -2,6 +2,131 @@
 
 ---
 
+## Session 2026-07-14 — Sprint RC-01 : Validation Windows
+
+### Objectif
+Premier sprint de la phase Release Candidate : développement fonctionnel
+gelé, objectif unique — valider le packaging Windows sur une vraie
+machine Windows 11 (le correctif Sprint 59 n'avait jamais été exécuté
+sur Windows faute de machine disponible). Aucune nouvelle fonctionnalité,
+aucun refactoring non indispensable ; toute modification devait être
+directement liée au packaging ou à un bug empêchant la publication.
+
+### Prérequis machine — aucun présent au départ
+Aucun composant nécessaire n'était installé sur cette machine :
+- **Visual Studio Build Tools 2022** (workload "Desktop development with
+  C++") — installé via winget (`--override "--quiet --wait --add
+  Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`).
+- **Windows Developer Mode** — désactivé par défaut ; activé par
+  l'utilisateur (nécessite les droits Administrateur, hors de portée
+  d'un shell non élevé).
+- **Environnement Python** — aucun `.venv` existant ; créé et peuplé via
+  `pip install -e ".[gui,dev]"` (Python 3.14, flet 0.85.3).
+
+### Premier échec — crash immédiat, avant toute compilation
+`flet build windows motorsport_calendar/gui --module-name app --yes`
+plantait instantanément avec `UnicodeEncodeError: 'charmap' codec can't
+encode character '●'` — le rendu console `rich` (dépendance de
+`flet_cli`) tentait d'afficher un caractère Unicode sur un terminal en
+page de code `cp1252`/`850`, pas UTF-8. **Correctif** :
+`PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` avant d'invoquer `flet build` —
+purement environnemental, aucun code du projet modifié.
+
+### Deuxième échec — CMake install, `vcruntime140_1.dll` introuvable
+La compilation native a réussi (`Building Windows application... 91,6s`)
+mais l'étape d'installation CMake échouait avec `file INSTALL cannot
+find "C:/WINDOWS/System32/vcruntime140_1.dll"`. MSBuild n'affichait que
+le bruit générique `MSB3073` (écho du batch wrapper), pas la vraie
+erreur — trouvée en relançant directement `cmake -DBUILD_TYPE=Release -P
+cmake_install.cmake`. **Cause racine** (confirmée, pas supposée) : le
+`cmake.exe` fourni avec Visual Studio Build Tools est un binaire **32
+bits** (`file cmake.exe` → `PE32 ... Intel i386`). Étant 32 bits, son
+accès à `C:\WINDOWS\System32\` est transparent redirigé par WOW64 vers
+`C:\WINDOWS\SysWOW64\` — où `vcruntime140_1.dll` ne peut, par
+construction, jamais exister : cette DLL est strictement réservée à x64
+(optimisation `/d2FH4`), aucune version 32 bits n'est jamais produite
+par aucun installeur Microsoft. Installer le VC++ Redistributable x64
+**et** x86 via winget était nécessaire mais **insuffisant** — le paquet
+x86 ne fournit jamais ce fichier spécifique, par design.
+**Correctif** (contournement documenté par la communauté Flutter/Windows
+pour ce problème connu, confirmé fonctionnel ici) : copier
+`C:\WINDOWS\System32\vcruntime140_1.dll` vers
+`C:\WINDOWS\SysWOW64\vcruntime140_1.dll` (droits Administrateur requis
+— fait par l'utilisateur) — un ajout pur, aucun fichier écrasé,
+facilement réversible. Le contenu copié dans le bundle final de l'app
+reste le vrai binaire x64 correct ; seule la *lecture source*
+redirigée par WOW64 est satisfaite par cette copie.
+
+### Résultat — build réussi, vérifié pour de vrai
+`flet build windows motorsport_calendar/gui --module-name app --yes` →
+`Successfully built your Windows app!`. `motorsport-calendar.exe` (314
+Ko), bundle complet 105 Mo, `site-packages/motorsport_calendar/`
+correctement imbriqué (même structure que le build Linux du Sprint 59),
+version 0.2.0 confirmée.
+
+**Lancement réel et confirmation visuelle — une première pour ce
+projet** (chaque sprint GUI précédent notait l'absence de compositeur
+d'affichage). Processus lancé, répond, titre de fenêtre natif `"gui"` au
+premier rendu (défaut compilé attendu) puis `"Motorsport Calendar"` une
+fois le démarrage Python terminé. Aucune trace dans
+`console.log` à aucun moment. **Les 8 pages parcourues avec captures
+d'écran réelles** (Tableau de bord, Ce week-end, Mon calendrier,
+Recherche, Mes favoris, Préférences, À propos, Soutenir le projet) —
+données réelles correctement affichées partout (Tableau de bord : 17
+championnats, 180 événements, 865 sessions ; Mon calendrier : arbre de
+catégories avec compteurs live ; Recherche : 108 résultats live). Aucun
+crash, aucun widget cassé, aucun problème de thème. Fermeture propre via
+le bouton de fermeture natif, processus terminé de lui-même.
+
+**Un bug cosmétique pré-existant trouvé pendant ce contrôle visuel** : le
+dropdown "Année par défaut" (page Préférences) tronque son texte
+("Année en co" au lieu de "Année en cours") — non bloquant, ajouté à
+`docs/TODO.md`.
+
+### Suite de tests — deux bugs de test réels trouvés en tournant sur Windows pour la première fois
+`pytest` (2042 tests) a d'abord signalé 3 échecs, tous dans des
+suppositions de test jamais vérifiées en conditions Windows réelles, pas
+dans le code applicatif :
+- `test_default_cache_path_contains_cache_dir` — supposait `.cache` dans
+  le chemin, alors que la convention Windows documentée
+  (`utils/paths.py`) est `%LOCALAPPDATA%\motorsport-calendar`, sans
+  segment `.cache`. Corrigé en rendant l'assertion spécifique à la
+  plateforme.
+- `test_falls_back_to_home_appdata_roaming_when_appdata_unset` et son
+  équivalent cache — vidaient tout l'environnement (`clear=True`), ce
+  qui neutralise aussi `USERPROFILE`. Ça fonctionnait par coïncidence
+  sous Linux (`Path.home()` retombe sur la base `pwd`, indépendante de
+  l'environnement) mais échoue légitimement sous Windows
+  (`Path.home()` n'a aucun repli sans variable d'environnement). Corrigé
+  en ne vidant que la variable pertinente (`APPDATA`/`LOCALAPPDATA`),
+  comme le fait déjà le test équivalent Linux du même fichier.
+
+Aucun code applicatif modifié — uniquement `tests/test_config_service.py`
+et `tests/test_utils_paths.py`. Suite complète : **2042 passants, 0
+skip** (le test auparavant marqué "Windows-only skip" tourne désormais
+pour de vrai et passe). Ruff : 0 erreur. Mypy : 41 `motorsport_calendar/`
+/ 176 `tests/` — identique à la dette déjà documentée, aucune régression.
+
+### Documentation mise à jour
+`docs/PACKAGING.md` (nouveau §8, compte-rendu complet du sprint),
+`docs/RELEASE.md` (§3 et §8, retrait de la mention "non vérifié"),
+`docs/ROADMAP.md` (item backlog Windows marqué fait), `docs/TODO.md`
+(item Windows marqué fait, nouvel item dropdown tronqué), `README.md`
+(tableau de statut : Windows packaging ✅).
+
+### Fichiers modifiés
+| Fichier | Action |
+|---|---|
+| `tests/test_config_service.py` | Assertion `.cache` rendue spécifique à la plateforme |
+| `tests/test_utils_paths.py` | Fallback `Path.home()` : ne vide plus tout l'environnement |
+| `docs/PACKAGING.md` | Nouveau §8 — validation Windows complète |
+| `docs/RELEASE.md` | §3/§8 mis à jour — build Windows vérifié |
+| `docs/ROADMAP.md` | Backlog — item Windows marqué fait |
+| `docs/TODO.md` | Items Windows marqués faits, nouvel item dropdown |
+| `README.md` | Tableau de statut — Windows packaging ✅ |
+
+---
+
 ## Session 2026-07-14 — Sprint 59 : Correction du packaging Flet
 
 ### Objectif

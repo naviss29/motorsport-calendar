@@ -630,8 +630,9 @@
 
 | Fonctionnalité | Priorité |
 |---|---|
-| Packaging Windows `.exe` via `flet build windows` — procédure documentée (`docs/RELEASE.md` §3) mais jamais exécutée pour de vrai (nécessite une machine Windows) | 🔴 HAUTE |
+| ~~Packaging Windows `.exe` via `flet build windows`~~ — ✅ validé pour de vrai sur une machine Windows 11 (Sprint RC-01), voir `docs/PACKAGING.md` §8 | ~~🔴 HAUTE~~ |
 | Publication PyPI (`pip install motorsport-calendar`) | 🔴 HAUTE |
+| Corriger la troncature du dropdown "Année par défaut" (Préférences) — affiche "Année en co" au lieu de "Année en cours" (trouvé Sprint RC-01) | 🟡 MOYENNE |
 | `PorscheSupercupProvider` — scraping `racing.porsche.com` + venues F1 (voir `docs/DATA_SOURCES.md`) | 🟢 BASSE |
 | Mémorisation du dernier fichier de sortie (Mon calendrier) | 🟡 MOYENNE |
 | `DESCRIPTION` dans les VEVENTs (circuit, pays, type de session) | 🟡 MOYENNE |

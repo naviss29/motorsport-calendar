@@ -109,15 +109,26 @@
   bloquant (cosmétique), voir `docs/PACKAGING.md` §7 pour ce qui a déjà
   été vérifié (le flag `--build-name` est bien envoyé, mais
   `version.json` ne semble pas en dépendre).
-- [ ] 🟡 Vérifier le correctif Sprint 59 sur le build Windows — le même
-  manifeste/mécanisme devrait s'appliquer identiquement (rien de
-  spécifique à Linux dans le correctif), mais jamais exécuté sur une
-  vraie machine Windows dans cet environnement.
+- [x] 🟡 Vérifier le correctif Sprint 59 sur le build Windows — **terminé
+  Sprint RC-01** : construit et lancé pour de vrai sur une machine
+  Windows 11, même manifeste/mécanisme confirmé fonctionnel. Deux
+  blocages machine/toolchain (pas le code du projet) rencontrés et
+  corrigés, voir `docs/PACKAGING.md` §8.
+- [ ] 🟡 Corriger la troncature du dropdown "Année par défaut"
+  (Préférences) — affiche "Année en co" au lieu de "Année en cours",
+  trouvé pendant le contrôle visuel réel Sprint RC-01 (premier rendu de
+  fenêtre jamais confirmé pour ce projet). Probablement une largeur de
+  `Dropdown` insuffisante pour le texte le plus long — non bloquant pour
+  la Beta.
 - [ ] 🟡 Vérification visuelle réelle du binaire Linux corrigé — le crash
   Python est résolu et vérifié (processus reste actif, aucune trace
   d'erreur), mais aucun rendu de fenêtre réel n'a pu être confirmé (pas
   de compositeur d'affichage dans cet environnement) ; à confirmer sur un
-  poste avec affichage avant toute distribution publique.
+  poste avec affichage avant toute distribution publique. Le binaire
+  Windows, lui, a été rendu et contrôlé visuellement pour de vrai (Sprint
+  RC-01, `docs/PACKAGING.md` §8) — le code GUI étant partagé entre
+  plateformes, ceci réduit le risque résiduel côté Linux sans
+  complètement le lever.
 - [ ] 🟢 Ajouter un fichier `.desktop` Linux pour une intégration menu
   Applications — non nécessaire pour une distribution en simple archive
   `.tar.gz`, attendu pour un futur `.deb`/AppImage/Flatpak.
@@ -308,11 +319,10 @@
   exécuter la checklist de validation complète du brief (démarre, charge les assets,
   ouvre toutes les pages, lit/écrit les préférences, crée le cache, génère un ICS,
   fonctionne sans le dépôt Git) contre le binaire réellement compilé.
-- [ ] 🟡 Exécuter le build Windows — jamais lancé faute de machine Windows disponible
-  dans cet environnement (et Flet ne permet pas la cross-compilation Windows depuis
-  Linux/macOS). Procédure documentée dans `docs/PACKAGING.md` §3 (Visual Studio 2022+
-  avec workload "Desktop development with C++", Developer Mode activé) mais jamais
-  vérifiée en conditions réelles.
+- [x] 🟡 Exécuter le build Windows — **terminé Sprint RC-01**, exécuté et
+  validé pour de vrai sur une machine Windows 11 (voir
+  `docs/PACKAGING.md` §8 pour la procédure complète et les deux
+  blocages machine/toolchain rencontrés et corrigés).
 - [ ] 🟢 Câbler `theme.logo_placeholder()` sur les vraies images Brand Set v1.0
   (`gui/assets/logo/mc-icon.svg`, `logo-horizontal.svg`, `logo-vertical.svg`, livrées
   Sprint 49 mais volontairement non consommées par les vues — remplacer des

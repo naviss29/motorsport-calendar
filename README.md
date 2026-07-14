@@ -317,16 +317,17 @@ investigation, including why IMSA and WorldSBK don't have a working source yet.
 ## Roadmap
 
 The project is currently **Alpha**, with Beta preparation work done — the desktop app,
-all 16 working providers, and standalone Linux packaging are in place and validated; see
-[`docs/ROADMAP.md`](docs/ROADMAP.md) for the detailed, per-sprint breakdown, and
-[`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md) for a running log of every sprint.
+all 16 working providers, and standalone Linux + Windows packaging are in place and
+validated; see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the detailed, per-sprint
+breakdown, and [`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md) for a running log of every
+sprint.
 
 | Milestone | Status |
 |---|---|
 | Multi-provider CLI, cache, config, ICS export | ✅ |
 | 16 working championships across single-seater, endurance, GT and motorcycle racing | ✅ |
 | Desktop app — Dashboard, weekend, calendar builder, search, favorites, preferences, notifications | ✅ Alpha |
-| Standalone desktop packaging (no Python required) | ✅ Linux, 🚧 Windows |
+| Standalone desktop packaging (no Python required) | ✅ Linux, ✅ Windows |
 | PyPI release, stable public API | 🚧 |
 
 ---

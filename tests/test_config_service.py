@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 from pydantic import ValidationError
 import pytest
@@ -35,7 +36,11 @@ class TestAppConfigDefaults:
 
     def test_default_cache_path_contains_cache_dir(self) -> None:
         path = str(AppConfig().cache.path)
-        assert ".cache" in path and "motorsport-calendar" in path
+        assert "motorsport-calendar" in path
+        if sys.platform != "win32":
+            # Windows uses %LOCALAPPDATA%\motorsport-calendar, no ".cache"
+            # segment — see utils/paths.py::user_cache_dir.
+            assert ".cache" in path
 
     def test_default_cache_path_matches_user_cache_dir(self) -> None:
         """Sprint 49 — the default must be the platform user cache

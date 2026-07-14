@@ -7,6 +7,47 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased] — Sprint RC-01 — Validation Windows
+
+### Fixed
+
+- **Le build Windows (`flet build windows motorsport_calendar/gui
+  --module-name app`) est désormais vérifié pour de vrai sur une
+  machine Windows 11** — jamais exécuté sur Windows auparavant (le
+  correctif du Sprint 59 n'avait été validé que sur Linux). Deux
+  blocages machine/toolchain rencontrés et corrigés, aucun des deux
+  causé par le code du projet :
+  - Le rendu console `rich` de `flet_cli` plantait immédiatement
+    (`UnicodeEncodeError`) sur un terminal en page de code non-UTF-8 —
+    corrigé en forçant `PYTHONUTF8=1` avant le build.
+  - Le `cmake.exe` 32 bits fourni avec Visual Studio Build Tools,
+    redirigé par WOW64, ne pouvait jamais trouver
+    `vcruntime140_1.dll` (DLL strictement x64, sans équivalent 32
+    bits) — corrigé en dupliquant ce fichier dans `SysWOW64`.
+  - Deux tests (`test_config_service.py`, `test_utils_paths.py`)
+    corrigés : ils reposaient sur des suppositions Linux jamais
+    vérifiées sous Windows (le code applicatif, lui, était déjà
+    correct).
+- Binaire Windows lancé et **contrôlé visuellement pour de vrai** — une
+  première pour ce projet. Les 8 pages de l'app desktop parcourues avec
+  captures d'écran réelles, aucun crash, aucun widget cassé.
+
+### Notes
+
+- Correctif uniquement packaging/tests — aucune nouvelle fonctionnalité,
+  aucun refactoring non indispensable (phase Release Candidate : gel
+  fonctionnel).
+- Un bug cosmétique pré-existant trouvé pendant le contrôle visuel : le
+  dropdown "Année par défaut" (Préférences) tronque son texte — non
+  bloquant, ajouté à `docs/TODO.md`.
+- 0 régression — 2041 → 2042 tests (le test auparavant marqué
+  "Windows-only skip" tourne désormais pour de vrai et passe). Ruff : 0
+  erreur. Mypy : dette inchangée (41/176, déjà documentée).
+- Détail complet : `docs/JOURNAL.md`, session Sprint RC-01 ;
+  `docs/PACKAGING.md` §8.
+
+---
+
 ## [Unreleased] — Sprint 59 — Correction du packaging Flet
 
 ### Fixed

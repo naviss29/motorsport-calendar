@@ -61,10 +61,18 @@ class TestUserConfigDirWindows:
         assert "AppData" in str(result.parent)
 
     def test_falls_back_to_home_appdata_roaming_when_appdata_unset(self) -> None:
+        # Only APPDATA is missing — USERPROFILE (which Path.home() needs on
+        # Windows to resolve at all) is realistically always set by the OS,
+        # unlike on Linux where a fully-cleared environ still resolves via
+        # the pwd database. clear=True here would make Path.home() itself
+        # raise, testing an environment that cannot occur in practice.
         with (
             patch("sys.platform", "win32"),
-            patch.dict("os.environ", {}, clear=True),
+            patch.dict("os.environ", {}, clear=False),
         ):
+            import os
+
+            os.environ.pop("APPDATA", None)
             result = user_config_dir("motorsport-calendar")
         assert result == Path.home() / "AppData" / "Roaming" / "motorsport-calendar"
 
@@ -103,10 +111,15 @@ class TestUserCacheDirWindows:
         assert "AppData" in str(result.parent)
 
     def test_falls_back_to_home_appdata_local_when_localappdata_unset(self) -> None:
+        # See the analogous APPDATA test above — only LOCALAPPDATA is
+        # missing, USERPROFILE stays set.
         with (
             patch("sys.platform", "win32"),
-            patch.dict("os.environ", {}, clear=True),
+            patch.dict("os.environ", {}, clear=False),
         ):
+            import os
+
+            os.environ.pop("LOCALAPPDATA", None)
             result = user_cache_dir("motorsport-calendar")
         assert result == Path.home() / "AppData" / "Local" / "motorsport-calendar"
 
