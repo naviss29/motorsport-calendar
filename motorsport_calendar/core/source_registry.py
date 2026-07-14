@@ -15,7 +15,8 @@ Signature attendue pour une source factory :
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # Type alias documentaire
 SourceFactory = Callable[..., Any]
@@ -71,6 +72,7 @@ class SourceRegistry:
         Chaque providers/X/sources/__init__.py appelle source_registry.register()
         pour chaque source disponible.
         """
+        import contextlib
         import importlib
         import pkgutil
 
@@ -78,12 +80,11 @@ class SourceRegistry:
 
         for _, name, is_pkg in pkgutil.iter_modules(_providers_pkg.__path__):
             if is_pkg:
-                try:
+                # provider sans sous-paquet sources/ — ignoré
+                with contextlib.suppress(ImportError):
                     importlib.import_module(
                         f"motorsport_calendar.providers.{name}.sources"
                     )
-                except ImportError:
-                    pass  # provider sans sous-paquet sources/ — ignoré
 
 
 # Singleton partagé par toute l'application.

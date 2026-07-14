@@ -9,6 +9,8 @@ URL: https://raw.githubusercontent.com/sportstimes/f1/main/_db/f2/{year}.json
 
 from __future__ import annotations
 
+from typing import Any
+
 from motorsport_calendar.models import (
     Championship,
     ChampionshipCategory,
@@ -109,7 +111,7 @@ def _resolve_circuit_data(slug: str) -> tuple[str, str]:
     return _CIRCUIT_DATA.get(slug, (_FALLBACK_COUNTRY, _FALLBACK_TIMEZONE))
 
 
-def _build_circuit(event_data: dict) -> Circuit:
+def _build_circuit(event_data: dict[str, Any]) -> Circuit:
     slug: str = event_data.get("slug", "")
     country, timezone = _resolve_circuit_data(slug)
     return Circuit(
@@ -121,10 +123,10 @@ def _build_circuit(event_data: dict) -> Circuit:
     )
 
 
-def _build_event(championship: Championship, event_data: dict, year: int) -> Event:
+def _build_event(championship: Championship, event_data: dict[str, Any], year: int) -> Event:
     circuit = _build_circuit(event_data)
     sessions: list[Session] = []
-    raw_sessions: dict = event_data.get("sessions", {})
+    raw_sessions: dict[str, Any] = event_data.get("sessions", {})
     for key, (session_type, duration, title) in _SESSION_MAP.items():
         if key in raw_sessions:
             session = _build_session(raw_sessions[key], session_type, duration, title)

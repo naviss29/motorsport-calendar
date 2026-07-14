@@ -3,13 +3,16 @@
 Strategy:
 - F1 : patch OpenF1Source._get_json avec AsyncMock (side_effect=[meetings, sessions])
 - WEC : patch OfficialWecSource.get_season avec AsyncMock (return_value=wec_events)
-- Pour les tests "tout échoue" : F1 mock → exception HTTP/timeout, WEC échoue naturellement
-  (NotImplementedError, aucun mock nécessaire)
+- OfficialWecSource est une implémentation réelle depuis le Sprint 48 (fiawec.com,
+  voir tests/test_wec_provider.py) — pour les scénarios "WEC échoue", get_season
+  doit désormais être explicitement mocké en échec (plus de NotImplementedError
+  naturel à s'appuyer dessus)
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -26,10 +29,46 @@ from motorsport_calendar.models import (
     Session,
     SessionType,
 )
+from motorsport_calendar.providers.elms.sources.aco_scraper import (
+    AcoScraperSource as ElmsAcoScraperSource,
+)
+from motorsport_calendar.providers.f1_academy.sources.f1calendar import (
+    F1CalendarSource as F1AcademyCalendarSource,
+)
 from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
-from motorsport_calendar.providers.f1_academy.sources.f1calendar import F1CalendarSource as F1AcademyCalendarSource
-from motorsport_calendar.providers.formula2.sources.f1calendar import F1CalendarSource as F2CalendarSource
-from motorsport_calendar.providers.formula3.sources.f1calendar import F1CalendarSource as F3CalendarSource
+from motorsport_calendar.providers.formula2.sources.f1calendar import (
+    F1CalendarSource as F2CalendarSource,
+)
+from motorsport_calendar.providers.formula3.sources.f1calendar import (
+    F1CalendarSource as F3CalendarSource,
+)
+from motorsport_calendar.providers.formula_e.sources.f1calendar import (
+    F1CalendarSource as FormulaECalendarSource,
+)
+from motorsport_calendar.providers.gtwc_america.sources.sro_scraper import (
+    SroScraperSource as GtwcAmericaSroScraperSource,
+)
+from motorsport_calendar.providers.gtwc_asia.sources.sro_scraper import (
+    SroScraperSource as GtwcAsiaSroScraperSource,
+)
+from motorsport_calendar.providers.gtwc_europe.sources.sro_scraper import (
+    SroScraperSource as GtwcEuropeSroScraperSource,
+)
+from motorsport_calendar.providers.igtc.sources.sro_scraper import (
+    SroScraperSource as IgtcSroScraperSource,
+)
+from motorsport_calendar.providers.mlmc.sources.aco_scraper import (
+    AcoScraperSource as MlmcAcoScraperSource,
+)
+from motorsport_calendar.providers.moto2.sources.pulselive import (
+    PulseliveSource as Moto2PulseliveSource,
+)
+from motorsport_calendar.providers.moto3.sources.pulselive import (
+    PulseliveSource as Moto3PulseliveSource,
+)
+from motorsport_calendar.providers.motogp.sources.pulselive import (
+    PulseliveSource as MotoGpPulseliveSource,
+)
 from motorsport_calendar.providers.wec.sources.official import OfficialWecSource
 
 runner = CliRunner()
@@ -115,8 +154,8 @@ _WEC_EVENTS = [
             Session(
                 type=SessionType.RACE,
                 title="Race",
-                start_datetime=datetime(2024, 3, 16, 16, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 3, 16, 22, 0, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 3, 16, 16, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 3, 16, 22, 0, tzinfo=UTC),
             ),
         ),
     ),
@@ -137,14 +176,14 @@ _WEC_EVENTS = [
             Session(
                 type=SessionType.HYPERPOLE,
                 title="Hyperpole",
-                start_datetime=datetime(2024, 5, 10, 9, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 5, 10, 9, 30, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 5, 10, 9, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 5, 10, 9, 30, tzinfo=UTC),
             ),
             Session(
                 type=SessionType.RACE,
                 title="Race",
-                start_datetime=datetime(2024, 5, 11, 13, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 5, 11, 19, 0, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 5, 11, 13, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 5, 11, 19, 0, tzinfo=UTC),
             ),
         ),
     ),
@@ -172,8 +211,8 @@ _WEC_EVENTS_EARLY = [
                 type=SessionType.RACE,
                 title="Race",
                 # Janvier — avant tous les events F1 de mars
-                start_datetime=datetime(2024, 1, 27, 14, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 1, 28, 14, 0, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 1, 27, 14, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 1, 28, 14, 0, tzinfo=UTC),
             ),
         ),
     )
@@ -190,16 +229,45 @@ def _mock_wec(events: list) -> AsyncMock:
 
 @pytest.fixture(autouse=True)
 def _isolate_support_series():
-    """Prevent F2/F3/F1-Academy from making real HTTP calls in every test.
+    """Prevent F2/F3/F1-Academy/Formula E/ELMS/MLMC/GT series/Moto series/WEC
+    from making real HTTP calls in every test.
 
-    Tests that need specific F2/F3/F1-Academy behaviour (error paths etc.)
-    override these mocks with explicit patch.object calls inside the test body.
+    Tests that need specific per-championship behaviour (error paths etc.)
+    override these mocks with explicit patch.object calls inside the test
+    body — an inner `with patch.object(...)` block always wins over this
+    outer one for its duration, then reverts cleanly on exit. ELMS/MLMC/GT
+    series are scraped (fetch_html), not JSON-fetched — an empty season/
+    calendar page (no race/round links) makes get_season() return [] the
+    same way an empty {"races": []} payload does for the JSON-based
+    sources. MotoGP/Moto2/Moto3 fetch a JSON *list* of events (not a
+    {"races": [...]} dict) — an empty list makes get_season() return []
+    the same way.
+
+    WEC (OfficialWecSource, a real implementation since Sprint 48) defaults
+    here to *failing* rather than an empty success — this preserves every
+    existing "WEC fails naturally" test's premise (previously true because
+    the stub always raised NotImplementedError when unmocked), without
+    each such test needing its own explicit failure mock.
     """
     _empty = AsyncMock(return_value={"races": []})
+    _empty_html = AsyncMock(return_value="<html><body>no races</body></html>")
+    _empty_moto = AsyncMock(return_value=[])
+    _wec_fails = AsyncMock(side_effect=NotImplementedError)
     with (
         patch.object(F2CalendarSource, "fetch_json", _empty),
         patch.object(F3CalendarSource, "fetch_json", _empty),
         patch.object(F1AcademyCalendarSource, "fetch_json", _empty),
+        patch.object(FormulaECalendarSource, "fetch_json", _empty),
+        patch.object(ElmsAcoScraperSource, "fetch_html", _empty_html),
+        patch.object(MlmcAcoScraperSource, "fetch_html", _empty_html),
+        patch.object(GtwcEuropeSroScraperSource, "fetch_html", _empty_html),
+        patch.object(GtwcAmericaSroScraperSource, "fetch_html", _empty_html),
+        patch.object(GtwcAsiaSroScraperSource, "fetch_html", _empty_html),
+        patch.object(IgtcSroScraperSource, "fetch_html", _empty_html),
+        patch.object(MotoGpPulseliveSource, "fetch_json", _empty_moto),
+        patch.object(Moto2PulseliveSource, "fetch_json", _empty_moto),
+        patch.object(Moto3PulseliveSource, "fetch_json", _empty_moto),
+        patch.object(OfficialWecSource, "get_season", _wec_fails),
     ):
         yield
 
@@ -300,11 +368,31 @@ class TestGenerateErrors:
         f2_fail = AsyncMock(side_effect=http_fail)
         f3_fail = AsyncMock(side_effect=http_fail)
         f1a_fail = AsyncMock(side_effect=http_fail)
+        fe_fail = AsyncMock(side_effect=http_fail)
+        elms_fail = AsyncMock(side_effect=http_fail)
+        mlmc_fail = AsyncMock(side_effect=http_fail)
+        gtwc_europe_fail = AsyncMock(side_effect=http_fail)
+        gtwc_america_fail = AsyncMock(side_effect=http_fail)
+        gtwc_asia_fail = AsyncMock(side_effect=http_fail)
+        igtc_fail = AsyncMock(side_effect=http_fail)
+        motogp_fail = AsyncMock(side_effect=http_fail)
+        moto2_fail = AsyncMock(side_effect=http_fail)
+        moto3_fail = AsyncMock(side_effect=http_fail)
         with (
             patch.object(OpenF1Source, "_get_json", f1_fail),
             patch.object(F2CalendarSource, "fetch_json", f2_fail),
             patch.object(F3CalendarSource, "fetch_json", f3_fail),
             patch.object(F1AcademyCalendarSource, "fetch_json", f1a_fail),
+            patch.object(FormulaECalendarSource, "fetch_json", fe_fail),
+            patch.object(ElmsAcoScraperSource, "fetch_html", elms_fail),
+            patch.object(MlmcAcoScraperSource, "fetch_html", mlmc_fail),
+            patch.object(GtwcEuropeSroScraperSource, "fetch_html", gtwc_europe_fail),
+            patch.object(GtwcAmericaSroScraperSource, "fetch_html", gtwc_america_fail),
+            patch.object(GtwcAsiaSroScraperSource, "fetch_html", gtwc_asia_fail),
+            patch.object(IgtcSroScraperSource, "fetch_html", igtc_fail),
+            patch.object(MotoGpPulseliveSource, "fetch_json", motogp_fail),
+            patch.object(Moto2PulseliveSource, "fetch_json", moto2_fail),
+            patch.object(Moto3PulseliveSource, "fetch_json", moto3_fail),
         ):
             result = runner.invoke(app, ["generate", "2024", str(tmp_path / "all.ics")])
         assert result.exit_code == 1
@@ -318,11 +406,31 @@ class TestGenerateErrors:
         f2_fail = AsyncMock(side_effect=http_fail)
         f3_fail = AsyncMock(side_effect=http_fail)
         f1a_fail = AsyncMock(side_effect=http_fail)
+        fe_fail = AsyncMock(side_effect=http_fail)
+        elms_fail = AsyncMock(side_effect=http_fail)
+        mlmc_fail = AsyncMock(side_effect=http_fail)
+        gtwc_europe_fail = AsyncMock(side_effect=http_fail)
+        gtwc_america_fail = AsyncMock(side_effect=http_fail)
+        gtwc_asia_fail = AsyncMock(side_effect=http_fail)
+        igtc_fail = AsyncMock(side_effect=http_fail)
+        motogp_fail = AsyncMock(side_effect=http_fail)
+        moto2_fail = AsyncMock(side_effect=http_fail)
+        moto3_fail = AsyncMock(side_effect=http_fail)
         with (
             patch.object(OpenF1Source, "_get_json", f1_fail),
             patch.object(F2CalendarSource, "fetch_json", f2_fail),
             patch.object(F3CalendarSource, "fetch_json", f3_fail),
             patch.object(F1AcademyCalendarSource, "fetch_json", f1a_fail),
+            patch.object(FormulaECalendarSource, "fetch_json", fe_fail),
+            patch.object(ElmsAcoScraperSource, "fetch_html", elms_fail),
+            patch.object(MlmcAcoScraperSource, "fetch_html", mlmc_fail),
+            patch.object(GtwcEuropeSroScraperSource, "fetch_html", gtwc_europe_fail),
+            patch.object(GtwcAmericaSroScraperSource, "fetch_html", gtwc_america_fail),
+            patch.object(GtwcAsiaSroScraperSource, "fetch_html", gtwc_asia_fail),
+            patch.object(IgtcSroScraperSource, "fetch_html", igtc_fail),
+            patch.object(MotoGpPulseliveSource, "fetch_json", motogp_fail),
+            patch.object(Moto2PulseliveSource, "fetch_json", moto2_fail),
+            patch.object(Moto3PulseliveSource, "fetch_json", moto3_fail),
         ):
             runner.invoke(app, ["generate", "2024", str(output)])
         assert not output.exists()
@@ -411,3 +519,84 @@ class TestGenerateSorting:
         assert len(vevents) >= 2
         # Le premier VEVENT doit être Daytona (janvier 2024 → 20240127)
         assert "20240127" in vevents[1]
+
+
+# ---------------------------------------------------------------------------
+# Concurrence (Sprint 50) — chaque provider est indépendant (API distante
+# différente) ; les récupérer en parallèle (asyncio.gather) plutôt que
+# séquentiellement réduit le temps total au provider le plus lent, pas à leur
+# somme. Mesuré ici plutôt qu'affirmé, conformément au brief Sprint 50
+# ("ne réaliser une optimisation que si elle est mesurable").
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateConcurrency:
+    def test_providers_are_fetched_concurrently_not_sequentially(
+        self, tmp_path: Path
+    ) -> None:
+        """Records each mocked provider call's *start* timestamp rather than
+        asserting a wall-clock budget for the whole CLI invocation: registry
+        discovery (importing all 17 provider packages) and provider/source
+        construction happen before ``asyncio.gather`` and take far longer
+        than the artificial delay below, so a total-elapsed-time assertion
+        would just measure that unrelated, pre-existing overhead. What
+        Sprint 50 actually changed is that every provider's own fetch call
+        starts at (approximately) the same instant instead of one starting
+        only after the previous one finished — that spread is what's
+        measured here.
+        """
+        import time
+
+        delay = 0.05
+        start_times: list[float] = []
+
+        async def _record_start_then_sleep() -> None:
+            start_times.append(time.perf_counter())
+            await asyncio.sleep(delay)
+
+        async def _slow_json(*args: object, **kwargs: object) -> dict[str, list]:
+            await _record_start_then_sleep()
+            return {"races": []}
+
+        async def _slow_html(*args: object, **kwargs: object) -> str:
+            await _record_start_then_sleep()
+            return "<html><body>no races</body></html>"
+
+        async def _slow_moto(*args: object, **kwargs: object) -> list:
+            await _record_start_then_sleep()
+            return []
+
+        async def _slow_wec(*args: object, **kwargs: object) -> list:
+            await _record_start_then_sleep()
+            return []
+
+        with (
+            patch.object(OpenF1Source, "_get_json", _mock_f1(_F1_MEETINGS, _F1_SESSIONS)),
+            patch.object(F2CalendarSource, "fetch_json", _slow_json),
+            patch.object(F3CalendarSource, "fetch_json", _slow_json),
+            patch.object(F1AcademyCalendarSource, "fetch_json", _slow_json),
+            patch.object(FormulaECalendarSource, "fetch_json", _slow_json),
+            patch.object(ElmsAcoScraperSource, "fetch_html", _slow_html),
+            patch.object(MlmcAcoScraperSource, "fetch_html", _slow_html),
+            patch.object(GtwcEuropeSroScraperSource, "fetch_html", _slow_html),
+            patch.object(GtwcAmericaSroScraperSource, "fetch_html", _slow_html),
+            patch.object(GtwcAsiaSroScraperSource, "fetch_html", _slow_html),
+            patch.object(IgtcSroScraperSource, "fetch_html", _slow_html),
+            patch.object(MotoGpPulseliveSource, "fetch_json", _slow_moto),
+            patch.object(Moto2PulseliveSource, "fetch_json", _slow_moto),
+            patch.object(Moto3PulseliveSource, "fetch_json", _slow_moto),
+            patch.object(OfficialWecSource, "get_season", _slow_wec),
+        ):
+            result = runner.invoke(app, ["generate", "2024", str(tmp_path / "all.ics")])
+
+        assert result.exit_code == 0
+        assert len(start_times) == 14  # every mocked provider was actually called
+        # Concurrent: all 14 calls start within one delay window of each
+        # other. Sequential (the pre-Sprint-50 behaviour) would spread them
+        # out by ~13 * delay (~0.65s) since each awaits the previous one's
+        # full sleep before starting.
+        spread = max(start_times) - min(start_times)
+        assert spread < delay, (
+            f"provider fetch calls spread over {spread:.3f}s — "
+            f"expected concurrent start within {delay}s"
+        )

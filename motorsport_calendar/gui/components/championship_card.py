@@ -31,6 +31,7 @@ yet) the title renders exactly as before, with no reserved empty space.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import flet as ft
@@ -119,6 +120,7 @@ def build_championship_card(
     data: ChampionshipCardData,
     *,
     footer: ft.Control | None = None,
+    on_circuit_click: Callable[[], None] | None = None,
 ) -> ft.Control:
     """Return one ChampionshipCard as a themed, bordered card.
 
@@ -135,6 +137,15 @@ def build_championship_card(
             (favori ⭐, notifications 🔔, export ICS, partage, résultats).
             When omitted (today, everywhere), no footer section is
             rendered at all — zero visual change until a caller opts in.
+        on_circuit_click: optional extension point (Sprint 47) — when set
+            *and* ``data.circuit_name is not None``, the circuit line
+            becomes clickable (``theme.Colors.PRIMARY``, same semantic
+            token as every other interactive element, no new color
+            introduced) and calls this with no arguments on click. ``None``
+            (default, every consumer but the "fiche événement" dialog)
+            renders the exact same plain, non-interactive line as before
+            this sprint — zero behavior change until a caller opts in,
+            same contract as *footer*.
     """
     sections: list[ft.Control] = [
         _header_title(data),
@@ -146,9 +157,24 @@ def build_championship_card(
         ),
     ]
     if data.circuit_name is not None:
-        sections.append(
-            ft.Text(data.circuit_name, size=theme.FontSize.SMALL, color=theme.Colors.TEXT_MUTED)
-        )
+        if on_circuit_click is None:
+            sections.append(
+                ft.Text(
+                    data.circuit_name, size=theme.FontSize.SMALL, color=theme.Colors.TEXT_MUTED
+                )
+            )
+        else:
+            sections.append(
+                ft.Container(
+                    content=ft.Text(
+                        data.circuit_name,
+                        size=theme.FontSize.SMALL,
+                        weight=ft.FontWeight.W_500,
+                        color=theme.Colors.PRIMARY,
+                    ),
+                    on_click=lambda e: on_circuit_click(),
+                )
+            )
     if data.country is not None:
         sections.append(
             ft.Text(data.country, size=theme.FontSize.SMALL, color=theme.Colors.TEXT_MUTED)

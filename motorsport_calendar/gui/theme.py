@@ -83,6 +83,8 @@ class Colors:
 
 
 class Spacing:
+    """4px-base spacing scale — the only source of padding/gap values."""
+
     XXS = 4
     XS = 8
     SM = 12
@@ -98,6 +100,8 @@ class Spacing:
 
 
 class Radius:
+    """Border-radius scale — the only source of corner-rounding values."""
+
     SM = 6
     MD = 8
     LG = 12
@@ -110,6 +114,8 @@ class Radius:
 
 
 class IconSize:
+    """Icon-size scale — the only source of icon pixel sizes."""
+
     SM = 16
     MD = 20
     LG = 24
@@ -122,6 +128,8 @@ class IconSize:
 
 
 class FontSize:
+    """Typography scale — the only source of font-size values."""
+
     CAPTION = 11
     SMALL = 12
     BODY = 13

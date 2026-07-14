@@ -296,6 +296,82 @@ class TestChronologicalOrderWithinCategory:
         assert labels == ["Essais Libres 1", "Qualifications", "Course"]
 
 
+class TestFavoritesFirstSortOrder:
+    """Sprint 44 — favorited championships are shown first among the
+    returned cards, ahead of the existing category/chronological order."""
+
+    def test_no_favorites_leaves_the_existing_order_unchanged(self) -> None:
+        f1 = _entry(
+            "formula1",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 12, 13, 0, tzinfo=UTC)),),
+        )
+        wec = _entry(
+            "wec",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 11, 8, 0, tzinfo=UTC)),),
+        )
+        result = uw.find_upcoming_weekend([wec, f1], now=NOW, favorite_ids=frozenset())
+        assert [card.championship_id for card in result.cards] == ["formula1", "wec"]
+
+    def test_one_favorite_moves_to_the_front(self) -> None:
+        f1 = _entry(
+            "formula1",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 12, 13, 0, tzinfo=UTC)),),
+        )
+        wec = _entry(
+            "wec",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 11, 8, 0, tzinfo=UTC)),),
+        )
+        # Without favorites, formula1 already comes first (category order)
+        # — favorite WEC to prove the override actually happened, not a
+        # coincidence of the existing order.
+        result = uw.find_upcoming_weekend([wec, f1], now=NOW, favorite_ids=frozenset({"wec"}))
+        assert [card.championship_id for card in result.cards] == ["wec", "formula1"]
+
+    def test_multiple_favorites_keep_their_relative_order(self) -> None:
+        f2 = _entry(
+            "formula2",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 12, 9, 0, tzinfo=UTC)),),
+        )
+        wec = _entry(
+            "wec",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 10, 8, 0, tzinfo=UTC)),),
+        )
+        f1 = _entry(
+            "formula1",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 12, 13, 0, tzinfo=UTC)),),
+        )
+        favorite_ids = frozenset({"wec", "formula1"})
+        result = uw.find_upcoming_weekend([wec, f2, f1], now=NOW, favorite_ids=favorite_ids)
+        ids = [card.championship_id for card in result.cards]
+        # Both favorites (wec, formula1) come before the non-favorite
+        # (formula2) — and among themselves keep the existing
+        # category-then-chronological order (formula1 before wec).
+        assert ids.index("formula1") < ids.index("formula2")
+        assert ids.index("wec") < ids.index("formula2")
+        assert ids.index("formula1") < ids.index("wec")
+
+    def test_all_favorited_leaves_the_existing_order_unchanged(self) -> None:
+        f1 = _entry(
+            "formula1",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 12, 13, 0, tzinfo=UTC)),),
+        )
+        wec = _entry(
+            "wec",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 11, 8, 0, tzinfo=UTC)),),
+        )
+        favorite_ids = frozenset({"formula1", "wec"})
+        result = uw.find_upcoming_weekend([wec, f1], now=NOW, favorite_ids=favorite_ids)
+        assert [card.championship_id for card in result.cards] == ["formula1", "wec"]
+
+    def test_favorite_not_present_this_weekend_has_no_effect(self) -> None:
+        f1 = _entry(
+            "formula1",
+            sessions=(_session(SessionType.RACE, datetime(2026, 7, 12, 13, 0, tzinfo=UTC)),),
+        )
+        result = uw.find_upcoming_weekend([f1], now=NOW, favorite_ids=frozenset({"motogp"}))
+        assert [card.championship_id for card in result.cards] == ["formula1"]
+
+
 class TestInvalidCircuitTimezone:
     def test_falls_back_to_utc_instead_of_raising(self) -> None:
         entry = _entry(
@@ -308,12 +384,53 @@ class TestInvalidCircuitTimezone:
         assert result.cards[0].sessions[0].day_time == "Dimanche 13:00"
 
 
+class TestFormatSessionDatetime:
+    """Sprint 39: added for gui/dashboard.py's standalone "prochain départ"
+    stat, which — unlike a card row already scoped to a known weekend —
+    needs the date spelled out alongside the day name and time.
+    """
+
+    def test_includes_day_date_and_time(self) -> None:
+        start = datetime(2026, 7, 12, 13, 0, tzinfo=UTC)
+        result = uw.format_session_datetime(start, "UTC")
+        assert result == "Dimanche 12/07 13:00"
+
+    def test_converts_to_circuit_local_timezone(self) -> None:
+        # Europe/Paris is UTC+2 in July (CEST).
+        start = datetime(2026, 7, 12, 13, 0, tzinfo=UTC)
+        result = uw.format_session_datetime(start, "Europe/Paris")
+        assert result == "Dimanche 12/07 15:00"
+
+    def test_falls_back_to_utc_on_invalid_timezone(self) -> None:
+        start = datetime(2026, 7, 12, 13, 0, tzinfo=UTC)
+        result = uw.format_session_datetime(start, "Not/A_Real_Zone")
+        assert result == "Dimanche 12/07 13:00"
+
+    def test_date_can_roll_to_a_different_day_than_utc(self) -> None:
+        # 23:30 UTC on a Saturday is already Sunday in Europe/Paris (CEST, UTC+2 in July).
+        start = datetime(2026, 7, 11, 23, 30, tzinfo=UTC)
+        result = uw.format_session_datetime(start, "Europe/Paris")
+        assert result == "Dimanche 12/07 01:30"
+
+
 class TestWeekendChampionshipIds:
-    def test_exactly_the_five_specified_championships(self) -> None:
+    def test_exactly_the_seventeen_specified_championships(self) -> None:
         assert uw.WEEKEND_CHAMPIONSHIP_IDS == (
             "formula1",
             "formula2",
             "formula3",
             "f1-academy",
+            "formula-e",
             "wec",
+            "elms",
+            "mlmc",
+            "imsa",
+            "gtwc-europe",
+            "gtwc-america",
+            "gtwc-asia",
+            "igtc",
+            "motogp",
+            "moto2",
+            "moto3",
+            "worldsbk",
         )

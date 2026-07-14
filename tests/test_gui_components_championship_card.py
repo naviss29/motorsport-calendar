@@ -201,6 +201,62 @@ class TestFooterExtensionPoint:
         assert card.content.controls[-1] is footer
 
 
+class TestCircuitClickExtensionPoint:
+    """Sprint 47: the circuit name becomes clickable only when a caller
+    opts in via ``on_circuit_click`` — every other consumer keeps the
+    exact same plain, non-interactive line as before this sprint."""
+
+    def _circuit_control(self, card: ft.Container) -> ft.Control:
+        column = card.content
+        return next(
+            c
+            for c in column.controls
+            if (isinstance(c, ft.Text) and c.value == "Spa-Francorchamps")
+            or (
+                isinstance(c, ft.Container)
+                and isinstance(c.content, ft.Text)
+                and c.content.value == "Spa-Francorchamps"
+            )
+        )
+
+    def test_circuit_name_is_plain_text_by_default(self) -> None:
+        card = build_championship_card(_make_data())
+        control = self._circuit_control(card)
+        assert isinstance(control, ft.Text)
+        assert control.color == theme.Colors.TEXT_MUTED
+
+    def test_circuit_name_becomes_a_clickable_container_when_wired(self) -> None:
+        card = build_championship_card(_make_data(), on_circuit_click=lambda: None)
+        control = self._circuit_control(card)
+        assert isinstance(control, ft.Container)
+        assert control.on_click is not None
+        assert control.content.value == "Spa-Francorchamps"
+        assert control.content.color == theme.Colors.PRIMARY
+
+    def test_clicking_calls_the_handler_with_no_arguments(self) -> None:
+        calls: list[None] = []
+        card = build_championship_card(_make_data(), on_circuit_click=lambda: calls.append(None))
+        control = self._circuit_control(card)
+        control.on_click(None)
+        assert calls == [None]
+
+    def test_no_circuit_name_means_nothing_to_click_even_when_wired(self) -> None:
+        """When circuit_name is hidden (redundant with the headline), there
+        is no text to attach a click handler to — on_circuit_click is
+        simply never invoked, not an error."""
+        card = build_championship_card(
+            _make_data(circuit_name=None), on_circuit_click=lambda: None
+        )
+        column = card.content
+        assert not any(
+            isinstance(c, ft.Container) and c.on_click is not None for c in column.controls
+        )
+
+    def test_omitting_on_circuit_click_does_not_change_the_section_count(self) -> None:
+        card = build_championship_card(_make_data())
+        assert len(card.content.controls) == 6
+
+
 class TestReusabilityAcrossChampionships:
     """The whole point of extracting this component: any championship, any
     event shape, renders through the exact same builder."""

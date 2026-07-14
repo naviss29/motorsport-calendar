@@ -116,7 +116,7 @@ class TestAbstractness:
             def _session_map(self): return {}
             @property
             def _circuit_data(self): return {}
-            def _make_championship(self, year): return None  # type: ignore[return-value]
+            def _make_championship(self, year): return None
 
         with pytest.raises(TypeError):
             _Incomplete()  # type: ignore[abstract]
@@ -127,7 +127,7 @@ class TestAbstractness:
             def _series_key(self): return "x"
             @property
             def _circuit_data(self): return {}
-            def _make_championship(self, year): return None  # type: ignore[return-value]
+            def _make_championship(self, year): return None
 
         with pytest.raises(TypeError):
             _Incomplete()  # type: ignore[abstract]
@@ -138,7 +138,7 @@ class TestAbstractness:
             def _series_key(self): return "x"
             @property
             def _session_map(self): return {}
-            def _make_championship(self, year): return None  # type: ignore[return-value]
+            def _make_championship(self, year): return None
 
         with pytest.raises(TypeError):
             _Incomplete()  # type: ignore[abstract]

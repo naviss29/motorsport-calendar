@@ -1,28 +1,42 @@
-# Emplacement du logo — à compléter
+# Logos — Brand Set v1.0 (livrés Sprint 49)
 
-Ce dossier reçoit les assets définitifs du Brand Set Motorsport Calendar v1.0
-(validé, voir `BApps-Studio/03-Products/Motorsport-Calendar/Branding/Branding.md`)
-dès qu'ils seront livrés dans ce dépôt.
+Ce dossier contient les assets définitifs du Brand Set Motorsport Calendar
+v1.0 (validé, voir `BApps-Studio/03-Products/Motorsport-Calendar/Branding/Branding.md`
+et sa copie locale `assets/branding/` à la racine du dépôt — copies
+identiques, vérifié bit à bit).
 
-En attendant, l'app affiche un **placeholder** (`theme.logo_placeholder()` dans
-`gui/theme.py`) partout où le vrai logo apparaîtra — aucun logo définitif n'a
-été créé ni copié ici pour ce sprint.
+Servis par Flet via `assets_dir` (`gui/app.py`) — accessibles à l'exécution
+sous le chemin relatif `logo/{fichier}`.
 
-## Fichiers attendus (non livrés)
+**Sprint 49 (Packaging Alpha) intègre les fichiers au build uniquement** —
+conformément à la consigne du sprint ("aucune évolution du Design System",
+"ne pas modifier les vues autrement que pour résoudre un problème de
+packaging"), l'app continue d'afficher le **placeholder**
+(`theme.logo_placeholder()` dans `gui/theme.py`) partout où le logo
+apparaîtra à terme. Remplacer les appels par de vraies images reste une
+tâche de polish visuel distincte, pas un problème de packaging.
 
-| Fichier | Rôle | Consommateur prévu |
+## Fichiers présents
+
+| Fichier | Rôle | Consommateur prévu (pas encore câblé) |
 |---|---|---|
-| `mc-icon.svg` / `.png` | Monogramme MC seul | Nav rail, en-tête "À propos", en-tête "Mon calendrier" |
-| `logo-horizontal.svg` / `.png` | Monogramme + wordmark | En-tête large / bannière |
-| `favicon-16.png`, `favicon-32.png` | Favicon | `app.py` (`page.window.icon`) |
-| `icon.ico` | Icône Windows multi-résolution | Packaging `.exe` (hors scope de ce sprint) |
+| `mc-icon.svg` | Monogramme MC seul, fond transparent | Nav rail, en-tête "À propos", en-tête "Mon calendrier" |
+| `logo-horizontal.svg` | Monogramme + wordmark, texte blanc | En-tête large / bannière |
+| `logo-vertical.svg` | Monogramme au-dessus du wordmark | Espaces restreints (menus latéraux, mobile) |
 
-## Intégration future
+L'icône application (fenêtre/barre des tâches) est **déjà câblée** :
+`gui/assets/icon.png` (`page.window.icon`, `main_view.py`) et
+`gui/assets/icon_windows.ico` (icône `.exe` Windows, convention Flet
+`icon_windows.ico` — voir `docs/PACKAGING.md`). Le favicon
+(`gui/assets/favicon-16.png`/`favicon-32.png`) est présent et servi mais
+n'a pas de consommateur actif : l'app ne cible que `ft.AppView.FLET_APP`
+(desktop natif) aujourd'hui, pas `WEB_BROWSER`.
 
-1. Copier les fichiers définitifs dans ce dossier.
-2. Décommenter `assets_dir=` dans `motorsport_calendar/gui/app.py`.
-3. Remplacer les appels à `theme.logo_placeholder(...)` par `ft.Image(src="logo/mc-icon.svg", ...)`
-   aux emplacements listés ci-dessus.
+## Intégration future (remplacement des placeholders)
+
+1. Remplacer les appels à `theme.logo_placeholder(...)` par
+   `ft.Image(src="logo/mc-icon.svg", ...)` (ou `logo-horizontal.svg`) aux
+   emplacements listés ci-dessus.
 
 Aucune autre modification de layout n'est nécessaire : les emplacements ont
 été dimensionnés pour accueillir le logo définitif tel quel.

@@ -393,7 +393,8 @@ class TestSourceConstruction:
     def test_cache_enabled_when_no_client(self) -> None:
         from unittest.mock import patch
 
-        with patch("motorsport_calendar.providers.support_series.f1calendar_base.HttpCache") as mock_cache:
+        target = "motorsport_calendar.providers.support_series.f1calendar_base.HttpCache"
+        with patch(target) as mock_cache:
             mock_cache.return_value = object()
             source = F1CalendarSource()
             assert source._cache is not None

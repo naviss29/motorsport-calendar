@@ -3,17 +3,19 @@
 Strategy: patch OfficialWecSource.get_season with AsyncMock so no real HTTP calls
 are made. The rest of the pipeline (WecProvider, IcsExporter) runs for real.
 
-For the NotImplementedError tests: no patch needed — the default stub raises it.
+OfficialWecSource is a real implementation since Sprint 48 (fiawec.com JSON-LD,
+see tests/test_wec_provider.py::TestOfficialWecSourceRealFixtures for its own
+fixture-driven parsing tests) — every test here still mocks get_season to keep
+this file network-free, same as before.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import httpx
-import pytest
 from typer.testing import CliRunner
 
 from motorsport_calendar.cli import app
@@ -57,8 +59,8 @@ _WEC_EVENTS = [
             Session(
                 type=SessionType.RACE,
                 title="Race",
-                start_datetime=datetime(2024, 3, 16, 16, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 3, 16, 22, 0, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 3, 16, 16, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 3, 16, 22, 0, tzinfo=UTC),
             ),
         ),
     ),
@@ -79,14 +81,14 @@ _WEC_EVENTS = [
             Session(
                 type=SessionType.HYPERPOLE,
                 title="Hyperpole",
-                start_datetime=datetime(2024, 5, 10, 9, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 5, 10, 9, 30, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 5, 10, 9, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 5, 10, 9, 30, tzinfo=UTC),
             ),
             Session(
                 type=SessionType.RACE,
                 title="Race",
-                start_datetime=datetime(2024, 5, 11, 13, 0, tzinfo=timezone.utc),
-                end_datetime=datetime(2024, 5, 11, 19, 0, tzinfo=timezone.utc),
+                start_datetime=datetime(2024, 5, 11, 13, 0, tzinfo=UTC),
+                end_datetime=datetime(2024, 5, 11, 19, 0, tzinfo=UTC),
             ),
         ),
     ),
@@ -176,18 +178,6 @@ class TestGenerateWecHappyPath:
 
 
 class TestGenerateWecErrors:
-    def test_not_implemented_exits_with_code_1(self, tmp_path: Path) -> None:
-        """Sans mock : le stub OfficialWecSource lève NotImplementedError."""
-        result = runner.invoke(
-            app, ["generate-wec", "2024", str(tmp_path / "cal.ics")]
-        )
-        assert result.exit_code == 1
-
-    def test_not_implemented_does_not_create_file(self, tmp_path: Path) -> None:
-        output = tmp_path / "cal.ics"
-        runner.invoke(app, ["generate-wec", "2024", str(output)])
-        assert not output.exists()
-
     def test_http_error_exits_with_code_1(self, tmp_path: Path) -> None:
         request = httpx.Request("GET", "https://example.com/wec")
         response = httpx.Response(503, request=request)

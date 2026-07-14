@@ -7,7 +7,7 @@ from .source_registry import SourceRegistry, source_registry
 __all__ = [
     "CalendarService",
     "ProviderRegistry",
-    "registry",
     "SourceRegistry",
+    "registry",
     "source_registry",
 ]

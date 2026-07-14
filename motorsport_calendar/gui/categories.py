@@ -14,14 +14,15 @@ To add a new group (e.g. Moto):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class Category(str, Enum):
+class Category(StrEnum):
     """High-level motorsport disciplines — present and future."""
 
     FORMULA = "formula"
     ENDURANCE = "endurance"
+    GT = "gt"
     MOTO = "moto"
     RALLY = "rally"
     AMERICA = "america"
@@ -44,13 +45,25 @@ GROUPS: list[ChampionshipGroup] = [
         category=Category.FORMULA,
         label="Formula",
         emoji="🏎",
-        championship_ids=("formula1", "formula2", "formula3", "f1-academy"),
+        championship_ids=("formula1", "formula2", "formula3", "f1-academy", "formula-e"),
     ),
     ChampionshipGroup(
         category=Category.ENDURANCE,
         label="Endurance",
         emoji="🏁",
-        championship_ids=("wec",),
+        championship_ids=("wec", "elms", "mlmc", "imsa"),
+    ),
+    ChampionshipGroup(
+        category=Category.GT,
+        label="GT",
+        emoji="🚗",
+        championship_ids=("gtwc-europe", "gtwc-america", "gtwc-asia", "igtc"),
+    ),
+    ChampionshipGroup(
+        category=Category.MOTO,
+        label="Moto",
+        emoji="🏍",
+        championship_ids=("motogp", "moto2", "moto3", "worldsbk"),
     ),
 ]
 

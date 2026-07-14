@@ -15,12 +15,11 @@ import pytest
 from motorsport_calendar.config.models import ProviderConfig, ProvidersConfig
 from motorsport_calendar.core.registry import ProviderRegistry, registry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _dummy_factory(source):  # type: ignore[no-untyped-def]
+def _dummy_factory(source):
     """Factory bidon pour les tests unitaires — prend une source, ne crée rien."""
     return object()
 
@@ -72,8 +71,13 @@ class TestProviderRegistryUnit:
 
     def test_register_overwrites_existing_entry(self) -> None:
         reg = ProviderRegistry()
-        original = lambda source: None  # noqa: E731
-        replacement = lambda source: None  # noqa: E731
+
+        def original(source):
+            return None
+
+        def replacement(source):
+            return None
+
         reg.register("formula1", original)
         reg.register("formula1", replacement)
         assert reg.get("formula1") is replacement
@@ -164,7 +168,7 @@ class TestProviderRegistryIntegration:
         source = OpenF1Source()
         provider = factory(source)
         assert isinstance(provider, Formula1Provider)
-        assert provider._source is source  # type: ignore[attr-defined]
+        assert provider._source is source
 
     def test_wec_factory_wraps_source_in_wec_provider(self) -> None:
         """La factory WEC prend une source et retourne un WecProvider."""
@@ -176,7 +180,7 @@ class TestProviderRegistryIntegration:
         source = OfficialWecSource()
         provider = factory(source)
         assert isinstance(provider, WecProvider)
-        assert provider._source is source  # type: ignore[attr-defined]
+        assert provider._source is source
 
     def test_enabled_returns_formula1_and_wec_with_default_config(self) -> None:
         registry.discover()

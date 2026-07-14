@@ -111,10 +111,10 @@ class F1CalendarBaseSource(JsonDataSource, ABC):
             for event_data in raw.get("races", [])  # type: ignore[union-attr]
         ]
 
-    async def fetch_json(self, url: str, params: dict[str, Any]) -> list | dict:
+    async def fetch_json(self, url: str, params: dict[str, Any]) -> list[Any] | dict[str, Any]:
         """Fetch JSON from *url*; uses cache when available."""
 
-        async def _do_fetch(_url: str, _params: dict) -> dict:
+        async def _do_fetch(_url: str, _params: dict[str, Any]) -> dict[str, Any]:
             response = await self._client.get(url, params=_params)
             response.raise_for_status()
             return response.json()  # type: ignore[no-any-return]
@@ -126,7 +126,7 @@ class F1CalendarBaseSource(JsonDataSource, ABC):
     def _resolve_circuit_data(self, slug: str) -> tuple[str, str]:
         return self._circuit_data.get(slug, ("Unknown", "UTC"))
 
-    def _build_circuit(self, event_data: dict) -> Circuit:
+    def _build_circuit(self, event_data: dict[str, Any]) -> Circuit:
         slug: str = event_data.get("slug", "")
         country, timezone = self._resolve_circuit_data(slug)
         return Circuit(
@@ -137,10 +137,12 @@ class F1CalendarBaseSource(JsonDataSource, ABC):
             timezone=timezone,
         )
 
-    def _build_event(self, championship: Championship, event_data: dict, year: int) -> Event:
+    def _build_event(
+        self, championship: Championship, event_data: dict[str, Any], year: int
+    ) -> Event:
         circuit = self._build_circuit(event_data)
         sessions: list[Session] = []
-        raw_sessions: dict = event_data.get("sessions", {})
+        raw_sessions: dict[str, Any] = event_data.get("sessions", {})
         for key, (session_type, duration, title) in self._session_map.items():
             if key in raw_sessions:
                 session = _build_session(raw_sessions[key], session_type, duration, title)

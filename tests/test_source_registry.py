@@ -11,12 +11,11 @@ import pytest
 
 from motorsport_calendar.core.source_registry import SourceRegistry, source_registry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _dummy_factory(cache, refresh):  # type: ignore[no-untyped-def]
+def _dummy_factory(cache, refresh):
     """Factory bidon pour les tests unitaires."""
     return object()
 
@@ -101,8 +100,13 @@ class TestSourceRegistryUnit:
 
     def test_register_overwrites_existing_factory(self) -> None:
         reg = SourceRegistry()
-        original = lambda cache, refresh: None  # noqa: E731
-        replacement = lambda cache, refresh: None  # noqa: E731
+
+        def original(cache, refresh):
+            return None
+
+        def replacement(cache, refresh):
+            return None
+
         reg.register("formula1", "openf1", original)
         reg.register("formula1", "openf1", replacement)
         assert reg.get("formula1", "openf1") is replacement
@@ -110,8 +114,13 @@ class TestSourceRegistryUnit:
     def test_different_championships_do_not_conflict(self) -> None:
         """formula1/openf1 et wec/openf1 sont des clés distinctes."""
         reg = SourceRegistry()
-        f1_factory = lambda cache, refresh: "f1-source"  # noqa: E731
-        wec_factory = lambda cache, refresh: "wec-source"  # noqa: E731
+
+        def f1_factory(cache, refresh):
+            return "f1-source"
+
+        def wec_factory(cache, refresh):
+            return "wec-source"
+
         reg.register("formula1", "openf1", f1_factory)
         reg.register("wec", "openf1", wec_factory)
         assert reg.get("formula1", "openf1") is f1_factory
@@ -170,13 +179,13 @@ class TestSourceRegistryIntegration:
         source_registry.discover()
         make_source = source_registry.get("formula1", "openf1")
         source = make_source(None, True)
-        assert source._refresh is True  # type: ignore[attr-defined]
+        assert source._refresh is True
 
     def test_formula1_openf1_factory_passes_refresh_false(self) -> None:
         source_registry.discover()
         make_source = source_registry.get("formula1", "openf1")
         source = make_source(None, False)
-        assert source._refresh is False  # type: ignore[attr-defined]
+        assert source._refresh is False
 
     def test_formula1_openf1_factory_passes_cache(self) -> None:
         from pathlib import Path
@@ -187,7 +196,7 @@ class TestSourceRegistryIntegration:
         make_source = source_registry.get("formula1", "openf1")
         cache = HttpCache(cache_dir=Path(".cache"), ttl=3600)
         source = make_source(cache, False)
-        assert source._cache is cache  # type: ignore[attr-defined]
+        assert source._cache is cache
 
     def test_wec_official_factory_creates_official_wec_source(self) -> None:
         from motorsport_calendar.providers.wec.sources.official import OfficialWecSource

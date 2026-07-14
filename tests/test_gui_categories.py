@@ -11,7 +11,6 @@ from motorsport_calendar.gui.categories import (
     get_groups_for,
 )
 
-
 # ---------------------------------------------------------------------------
 # Category
 # ---------------------------------------------------------------------------
@@ -28,12 +27,12 @@ class TestCategory:
     def test_is_str_subclass(self):
         assert isinstance(Category.FORMULA, str)
 
-    def test_all_five_categories_defined(self):
+    def test_all_six_categories_defined(self):
         names = {c.name for c in Category}
-        assert names == {"FORMULA", "ENDURANCE", "MOTO", "RALLY", "AMERICA"}
+        assert names == {"FORMULA", "ENDURANCE", "GT", "MOTO", "RALLY", "AMERICA"}
 
     def test_iteration_yields_all_members(self):
-        assert len(list(Category)) == 5
+        assert len(list(Category)) == 6
 
 
 # ---------------------------------------------------------------------------
@@ -50,7 +49,7 @@ class TestChampionshipGroup:
             championship_ids=("formula1",),
         )
         with pytest.raises((AttributeError, TypeError)):
-            group.label = "changed"  # type: ignore[misc]
+            group.label = "changed"
 
     def test_championship_ids_is_tuple(self):
         group = ChampionshipGroup(
@@ -166,7 +165,7 @@ class TestGetGroupsFor:
     def test_no_empty_groups_returned(self):
         # If none of the available IDs belong to a registered group, that group is omitted
         result = get_groups_for(["wec"])
-        for group, ids in result:
+        for _group, ids in result:
             assert len(ids) > 0
 
     def test_all_available_ids_are_returned(self):

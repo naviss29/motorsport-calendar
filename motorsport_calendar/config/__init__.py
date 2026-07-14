@@ -6,14 +6,16 @@ from motorsport_calendar.config.models import (
     IcsConfig,
     ProviderConfig,
     ProvidersConfig,
+    UpdateConfig,
 )
 from motorsport_calendar.config.service import ConfigService
 
 __all__ = [
     "AppConfig",
     "CacheConfig",
+    "ConfigService",
     "IcsConfig",
     "ProviderConfig",
     "ProvidersConfig",
-    "ConfigService",
+    "UpdateConfig",
 ]

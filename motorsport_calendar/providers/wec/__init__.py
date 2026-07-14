@@ -8,7 +8,7 @@ from .source import WecSource
 __all__ = ["WecProvider", "WecSource"]
 
 
-def _make_provider(source):  # type: ignore[no-untyped-def]
+def _make_provider(source: WecSource) -> WecProvider:
     """Factory WEC : enveloppe une source dans un WecProvider."""
     return WecProvider(source)
 

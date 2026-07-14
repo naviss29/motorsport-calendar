@@ -14,6 +14,7 @@ import pytest
 from motorsport_calendar.gui import theme
 from motorsport_calendar.gui.components.layout import (
     CardList,
+    ComingSoonRow,
     EmptyState,
     PageContainer,
     PageHeader,
@@ -69,6 +70,60 @@ class TestPageContainer:
         assert container.content.content.controls == [a, b, c]
 
 
+class TestPageContainerFooter:
+    """Sprint 43 — optional footer pinned below a scrollable header+body,
+    for "Mon calendrier"'s always-visible "Créer mon calendrier" action."""
+
+    def test_no_footer_behaves_exactly_like_before(self) -> None:
+        """Omitting footer must be a complete no-op — every other page's
+        structure (single scrolling column) stays byte-for-byte identical."""
+        header, body_item = ft.Text("header"), ft.Text("body")
+        with_footer_omitted = PageContainer(header=header, body=[body_item])
+        column = with_footer_omitted.content.content
+        assert column.controls == [header, body_item]
+        assert column.scroll == ft.ScrollMode.AUTO
+
+    def test_returns_a_control(self) -> None:
+        container = PageContainer(body=[ft.Text("x")], footer=ft.Text("footer"))
+        assert isinstance(container, ft.Control)
+
+    def test_matches_page_shell_width_padding_alignment(self) -> None:
+        """Same width/padding/alignment tokens as the no-footer path —
+        structural split only, not a new visual style."""
+        container = PageContainer(body=[ft.Text("x")], footer=ft.Text("footer"))
+        assert container.content.width == theme.MAX_CONTENT_WIDTH
+        assert container.alignment == ft.Alignment.TOP_CENTER
+        assert container.padding == theme.page_padding()
+
+    def test_outer_column_is_stretch_and_does_not_scroll(self) -> None:
+        """Only the header+body region scrolls — the outer column (which
+        also holds the fixed footer) must not, or the footer would scroll
+        away with everything else."""
+        container = PageContainer(body=[ft.Text("x")], footer=ft.Text("footer"))
+        outer_column = container.content.content
+        assert outer_column.horizontal_alignment == ft.CrossAxisAlignment.STRETCH
+        assert outer_column.scroll is None
+
+    def test_footer_is_last_and_outside_the_scrollable_region(self) -> None:
+        header, body_item, footer = ft.Text("header"), ft.Text("body"), ft.Text("footer")
+        container = PageContainer(header=header, body=[body_item], footer=footer)
+        outer_column = container.content.content
+        assert outer_column.controls[-1] is footer
+
+        scrollable_region = outer_column.controls[0]
+        assert isinstance(scrollable_region, ft.Container)
+        assert scrollable_region.expand is True
+        scrollable_column = scrollable_region.content
+        assert scrollable_column.controls == [header, body_item]
+        assert scrollable_column.scroll == ft.ScrollMode.AUTO
+
+    def test_footer_not_present_in_the_scrollable_region(self) -> None:
+        footer = ft.Text("footer")
+        container = PageContainer(body=[ft.Text("x")], footer=footer)
+        scrollable_region = container.content.content.controls[0]
+        assert footer not in scrollable_region.content.controls
+
+
 class TestPageHeader:
     def test_returns_a_control(self) -> None:
         assert isinstance(PageHeader("Titre"), ft.Control)
@@ -102,6 +157,27 @@ class TestPageHeader:
     def test_works_without_an_icon(self) -> None:
         header = PageHeader("Titre", icon=None)
         assert isinstance(header, ft.Control)
+
+    def test_no_trailing_by_default_title_row_unchanged(self) -> None:
+        """Sprint 43: omitting trailing must be a complete no-op — the
+        title row stays exactly theme.section_title()'s own Row, not
+        wrapped in an extra one."""
+        header = PageHeader("Titre", icon=ft.Icons.SETTINGS)
+        title_row = header.controls[0]
+        assert all(not isinstance(c, ft.Row) for c in title_row.controls)
+
+    def test_trailing_appears_in_the_title_row(self) -> None:
+        trailing = ft.Dropdown(label="Saison")
+        header = PageHeader("Mon calendrier", trailing=trailing)
+        title_row = header.controls[0]
+        assert isinstance(title_row, ft.Row)
+        assert trailing in title_row.controls
+
+    def test_trailing_does_not_affect_divider_position(self) -> None:
+        trailing = ft.Dropdown(label="Saison")
+        header = PageHeader("Mon calendrier", subtitle="2026", trailing=trailing)
+        assert isinstance(header.controls[-1], ft.Divider)
+        assert len(header.controls) == 3
 
 
 class TestSection:
@@ -237,6 +313,52 @@ class TestPageSpacing:
         spacer = PageSpacing()
         assert isinstance(spacer, ft.Container)
         assert spacer.content is None
+
+
+class TestComingSoonRow:
+    """Sprint 57 — promoted from ``views/preferences.py``'s own private
+    ``_pref_row`` (Sprint 52) once "Soutenir le projet" needed the exact
+    same "prepared, not yet real" row shape for its PayPal/GitHub
+    Sponsors placeholders."""
+
+    def test_returns_a_bordered_card(self) -> None:
+        row = ComingSoonRow(ft.Icons.LANGUAGE, "Langue")
+        assert isinstance(row, ft.Container)
+        assert row.border is not None
+
+    def test_label_is_shown(self) -> None:
+        from motorsport_calendar.gui.strings import STRINGS
+
+        row = ComingSoonRow(ft.Icons.LANGUAGE, "Langue")
+        texts = [
+            c.value
+            for c in row.content.controls
+            if isinstance(c, ft.Text) and c.value != STRINGS.prefs_coming_soon
+        ]
+        assert "Langue" in texts
+
+    def test_shows_the_coming_soon_chip(self) -> None:
+        from motorsport_calendar.gui.strings import STRINGS
+
+        row = ComingSoonRow(ft.Icons.LANGUAGE, "Langue")
+        texts = []
+        for c in row.content.controls:
+            if isinstance(c, ft.Text):
+                texts.append(c.value)
+            elif isinstance(c, ft.Container) and isinstance(c.content, ft.Text):
+                texts.append(c.content.value)
+        assert STRINGS.prefs_coming_soon in texts
+
+    def test_icon_is_shown(self) -> None:
+        row = ComingSoonRow(ft.Icons.LANGUAGE, "Langue")
+        icons = [c for c in row.content.controls if isinstance(c, ft.Icon)]
+        assert len(icons) == 1
+        assert icons[0].icon == ft.Icons.LANGUAGE
+
+    def test_different_labels_produce_independent_rows(self) -> None:
+        row_a = ComingSoonRow(ft.Icons.LANGUAGE, "Langue")
+        row_b = ComingSoonRow(ft.Icons.SCHEDULE, "Format horaire")
+        assert row_a is not row_b
 
 
 class TestLayoutSystemIntegration:

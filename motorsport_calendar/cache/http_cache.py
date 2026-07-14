@@ -7,11 +7,23 @@ transparente.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import hashlib
 import json
-import time
-from collections.abc import Awaitable, Callable
 from pathlib import Path
+import time
+from typing import Any
+
+from motorsport_calendar.utils.paths import user_cache_dir
+
+# Sprint 49 : le répertoire par défaut était auparavant ``Path(".cache")``
+# (relatif au répertoire courant) — un problème de packaging réel : lancée
+# depuis le dépôt Git en développement, l'app écrivait silencieusement dans
+# le dépôt lui-même ; packagée, le répertoire courant au lancement n'est ni
+# prévisible ni forcément inscriptible. Tout appelant qui passe
+# explicitement ``cache_dir=`` (CLI/GUI via ``config.cache.resolved_path``)
+# est inchangé — seul ce repli implicite change d'emplacement.
+_DEFAULT_CACHE_DIR = user_cache_dir("motorsport-calendar")
 
 
 class HttpCache:
@@ -21,13 +33,16 @@ class HttpCache:
     La validité est déterminée par un TTL (time-to-live) en secondes.
 
     Args:
-        cache_dir: Répertoire de stockage des fichiers cache.
+        cache_dir: Répertoire de stockage des fichiers cache. Par défaut,
+            le répertoire cache utilisateur multi-plateforme (voir
+            ``utils/paths.py::user_cache_dir``), jamais le répertoire
+            courant.
         ttl: Durée de vie en secondes (défaut : 86400 = 24 h).
     """
 
     def __init__(
         self,
-        cache_dir: Path = Path(".cache"),
+        cache_dir: Path = _DEFAULT_CACHE_DIR,
         ttl: int = 86400,
     ) -> None:
         self._cache_dir = cache_dir
@@ -41,11 +56,11 @@ class HttpCache:
     async def get_json(
         self,
         url: str,
-        params: dict,
-        fetch: Callable[[str, dict], Awaitable[list | dict]],
+        params: dict[str, Any],
+        fetch: Callable[[str, dict[str, Any]], Awaitable[list[Any] | dict[str, Any]]],
         *,
         refresh: bool = False,
-    ) -> list | dict:
+    ) -> list[Any] | dict[str, Any]:
         """Retourne les données mises en cache ou appelle ``fetch`` et les stocke.
 
         Args:
@@ -68,7 +83,7 @@ class HttpCache:
         self._write(key, url, params, data)
         return data
 
-    def invalidate(self, url: str, params: dict) -> bool:
+    def invalidate(self, url: str, params: dict[str, Any]) -> bool:
         """Supprime une entrée de cache. Retourne True si l'entrée existait."""
         path = self._cache_path(self._make_key(url, params))
         if path.exists():
@@ -88,7 +103,7 @@ class HttpCache:
     # Méthodes internes
     # ------------------------------------------------------------------
 
-    def _make_key(self, url: str, params: dict) -> str:
+    def _make_key(self, url: str, params: dict[str, Any]) -> str:
         """Clé déterministe depuis URL + paramètres triés."""
         payload = json.dumps({"url": url, "params": params}, sort_keys=True)
         return hashlib.sha256(payload.encode()).hexdigest()
@@ -96,7 +111,7 @@ class HttpCache:
     def _cache_path(self, key: str) -> Path:
         return self._cache_dir / f"{key}.json"
 
-    def _read(self, key: str) -> list | dict | None:
+    def _read(self, key: str) -> list[Any] | dict[str, Any] | None:
         """Retourne les données si l'entrée existe et est valide, None sinon."""
         path = self._cache_path(key)
         if not path.exists():
@@ -105,11 +120,14 @@ class HttpCache:
             entry = json.loads(path.read_text(encoding="utf-8"))
             if time.time() - entry["cached_at"] > self._ttl:
                 return None
-            return entry["data"]
+            data: list[Any] | dict[str, Any] = entry["data"]
+            return data
         except (json.JSONDecodeError, KeyError, OSError):
             return None
 
-    def _write(self, key: str, url: str, params: dict, data: list | dict) -> None:
+    def _write(
+        self, key: str, url: str, params: dict[str, Any], data: list[Any] | dict[str, Any]
+    ) -> None:
         """Écrit les données sur disque avec les métadonnées de cache."""
         entry = {
             "cached_at": time.time(),

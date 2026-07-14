@@ -10,9 +10,20 @@ _DISPLAY_NAMES: dict[str, str] = {
     "formula2": "Formula 2",
     "formula3": "Formula 3",
     "f1-academy": "F1 Academy",
+    "formula-e": "Formula E",
     "wec": "FIA WEC",
     "porsche-supercup": "Porsche Supercup",
     "elms": "European Le Mans Series",
+    "mlmc": "Michelin Le Mans Cup",
+    "imsa": "IMSA WeatherTech SportsCar Championship",
+    "gtwc-europe": "GT World Challenge Europe",
+    "gtwc-america": "GT World Challenge America",
+    "gtwc-asia": "GT World Challenge Asia",
+    "igtc": "Intercontinental GT Challenge",
+    "motogp": "MotoGP",
+    "moto2": "Moto2",
+    "moto3": "Moto3",
+    "worldsbk": "WorldSBK",
 }
 
 # Championships pre-selected at first launch (no saved preferences found)

@@ -23,12 +23,18 @@ that any current or future view composes instead of rebuilding:
   empty page today and tomorrow.
 - ``PageSpacing``   — a named, explicit one-off gap, for the rare case
   none of the above already covers it.
+- ``ComingSoonRow`` — icon + label + a muted "Disponible prochainement"
+  chip, for any setting/link that is prepared but not yet wired to
+  something real (Sprint 57 — promoted from ``views/preferences.py``'s
+  own ``_pref_row`` once "Soutenir le projet" needed the identical shape
+  for its PayPal/GitHub Sponsors slots).
 
 Every component here is built exclusively from ``gui/theme.py``'s existing
 tokens and primitives — no new colors, spacing values, or design tokens are
 introduced by this package.
 """
 from .card_list import CardList
+from .coming_soon_row import ComingSoonRow
 from .empty_state import EmptyState
 from .page_container import PageContainer
 from .page_header import PageHeader
@@ -37,6 +43,7 @@ from .spacing import PageSpacing
 
 __all__ = [
     "CardList",
+    "ComingSoonRow",
     "EmptyState",
     "PageContainer",
     "PageHeader",

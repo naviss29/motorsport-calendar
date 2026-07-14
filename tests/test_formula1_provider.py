@@ -10,7 +10,6 @@ from motorsport_calendar.providers.formula1.sources.ergast import ErgastSource
 from motorsport_calendar.providers.formula1.sources.official import OfficialFormula1Source
 from motorsport_calendar.providers.formula1.sources.openf1 import OpenF1Source
 
-
 # ---------------------------------------------------------------------------
 # Test double — a minimal in-memory source used across multiple tests
 # ---------------------------------------------------------------------------

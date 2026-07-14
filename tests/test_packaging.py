@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
+from pathlib import Path
 import subprocess
 import sys
+import tomllib
 
 import pytest
 from typer.testing import CliRunner
@@ -22,6 +24,8 @@ from motorsport_calendar import __version__
 from motorsport_calendar.cli import app
 
 runner = CliRunner()
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +234,9 @@ class TestPublicImports:
         assert F1AcademySource is not None
 
     def test_support_series_base_importable(self) -> None:
-        from motorsport_calendar.providers.support_series.f1calendar_base import F1CalendarBaseSource
+        from motorsport_calendar.providers.support_series.f1calendar_base import (
+            F1CalendarBaseSource,
+        )
         assert F1CalendarBaseSource is not None
 
     def test_wec_provider_importable(self) -> None:
@@ -249,6 +255,59 @@ class TestPublicImports:
     def test_config_service_importable(self) -> None:
         from motorsport_calendar.config import ConfigService
         assert ConfigService is not None
+
+    def test_utils_paths_importable(self) -> None:
+        from motorsport_calendar.utils.paths import user_cache_dir, user_config_dir
+        assert user_cache_dir is not None
+        assert user_config_dir is not None
+
+
+# ---------------------------------------------------------------------------
+# GUI assets — Sprint 49 (Brand Set v1.0, Flet assets_dir bundling)
+# ---------------------------------------------------------------------------
+
+
+class TestGuiAssetsBundling:
+    """gui.app is importable without Flet actually being installed as a
+    hard dependency (it's an optional extra) — only the module-level
+    ``_ASSETS_DIR`` constant is exercised here, never ``main()`` itself
+    (which imports flet lazily, inside the function body)."""
+
+    def test_gui_app_importable(self) -> None:
+        from motorsport_calendar.gui import app
+        assert app is not None
+
+    def test_assets_dir_is_absolute(self) -> None:
+        from motorsport_calendar.gui.app import _ASSETS_DIR
+        assert Path(_ASSETS_DIR).is_absolute()
+
+    def test_assets_dir_exists_and_contains_official_brand_files(self) -> None:
+        from motorsport_calendar.gui.app import _ASSETS_DIR
+        assets = Path(_ASSETS_DIR)
+        assert assets.is_dir()
+        # The exact 6 files named in the Sprint 49 brief.
+        assert (assets / "icon.png").is_file()
+        assert (assets / "icon_windows.ico").is_file()
+        assert (assets / "favicon-16.png").is_file()
+        assert (assets / "favicon-32.png").is_file()
+        assert (assets / "logo" / "mc-icon.svg").is_file()
+        assert (assets / "logo" / "logo-horizontal.svg").is_file()
+        assert (assets / "logo" / "logo-vertical.svg").is_file()
+
+    def test_assets_dir_resolution_is_independent_of_cwd(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sprint 49 — Flet's own ``assets_dir`` resolves relative strings
+        against the CWD at launch time, not this module's location — a
+        packaged/installed ``motocal-gui`` can be launched from anywhere.
+        ``_ASSETS_DIR`` must already be an absolute path so it never
+        depends on the launch directory."""
+        monkeypatch.chdir(tmp_path)
+        import importlib
+
+        from motorsport_calendar.gui import app
+        importlib.reload(app)
+        assert Path(app._ASSETS_DIR).is_dir()
 
 
 # ---------------------------------------------------------------------------
@@ -308,3 +367,132 @@ class TestRegistryDiscovery:
         from motorsport_calendar.core.source_registry import source_registry
         source_registry.discover()
         assert "f1calendar" in source_registry.list_for("f1-academy")
+
+
+# ---------------------------------------------------------------------------
+# Flet build manifest — Sprint 58/59 (Validation & correction packaging)
+# ---------------------------------------------------------------------------
+
+
+def _parse_requirement_name(requirement: str) -> str:
+    """Package name only, stripped of any version specifier — e.g.
+    ``"pydantic>=2.7"`` -> ``"pydantic"``. Good enough for this file's own
+    dependency strings (no extras, no markers, no `@` URLs)."""
+    for sep in ("==", ">=", "<=", "~=", ">", "<", "!="):
+        if sep in requirement:
+            return requirement.split(sep, 1)[0].strip()
+    return requirement.strip()
+
+
+class TestFletBuildManifest:
+    """``motorsport_calendar/gui/pyproject.toml`` (Sprint 58/59) is a
+    second, build-only manifest — the one ``flet build linux
+    motorsport_calendar/gui --module-name app`` actually reads (Flet
+    loads ``pyproject.toml`` from the exact directory it's pointed at,
+    confirmed by reading ``flet_cli``'s own source — never the repo
+    root). Without it, the compiled app crashed on startup with
+    ``ModuleNotFoundError: No module named 'motorsport_calendar'`` — and
+    fixing *only* the missing-dependencies half of that (a naive
+    duplicate ``[project.dependencies]`` list here) was proven
+    insufficient by an actual rebuild + a real launch of the compiled
+    binary: the app still crashed the same way, because `flet build`
+    zips the *contents* of whichever directory it's pointed at
+    (`motorsport_calendar/gui/`'s own files, flattened, no
+    `motorsport_calendar.` package wrapper) — no dependency list fixes
+    that on its own, since every file in `gui/` uses absolute
+    ``from motorsport_calendar.gui... import`` statements.
+
+    The actual fix: ``tool.flet.dev_packages`` installs this project
+    itself, from its real root, as a genuine local package — the exact
+    mechanism Flet provides for "a dependency I'm developing locally,
+    not on PyPI". This is why the build manifest's own
+    ``[project.dependencies]`` lists only ``flet`` + ``motorsport-
+    calendar`` itself, never a duplicated copy of the root's 9 real
+    dependencies — installing the local package pulls those in
+    transitively, from the one place they're actually declared."""
+
+    @pytest.fixture()
+    def root_pyproject(self) -> dict:
+        return tomllib.loads((_REPO_ROOT / "pyproject.toml").read_text())
+
+    @pytest.fixture()
+    def gui_pyproject(self) -> dict:
+        return tomllib.loads(
+            (_REPO_ROOT / "motorsport_calendar" / "gui" / "pyproject.toml").read_text()
+        )
+
+    def test_gui_manifest_exists(self) -> None:
+        assert (_REPO_ROOT / "motorsport_calendar" / "gui" / "pyproject.toml").is_file()
+
+    def test_gui_manifest_declares_flet(self, gui_pyproject: dict) -> None:
+        """``flet`` itself is only an optional extra at the root (CLI-only
+        installs must never require it) — the build manifest is the one
+        place it must be a hard dependency, or the compiled app has no
+        Flet to import either."""
+        names = {_parse_requirement_name(d) for d in gui_pyproject["project"]["dependencies"]}
+        assert "flet" in names
+
+    def test_gui_manifest_declares_the_project_itself(
+        self, root_pyproject: dict, gui_pyproject: dict
+    ) -> None:
+        """The one dependency that actually pulls in `motorsport_calendar`
+        (the real package, correctly nested) plus every one of its own
+        declared dependencies transitively — never a second, duplicated
+        copy of that dependency list in this file."""
+        names = {_parse_requirement_name(d) for d in gui_pyproject["project"]["dependencies"]}
+        assert root_pyproject["project"]["name"] in names
+
+    def test_gui_manifest_never_duplicates_the_root_dependency_list(
+        self, root_pyproject: dict, gui_pyproject: dict
+    ) -> None:
+        """The single-source-of-truth guarantee: nothing here should name
+        one of the root's own runtime dependencies directly — if one
+        shows up, someone reintroduced the duplicated-list pattern this
+        design deliberately avoids (harmless today, but a future edit to
+        one list silently drifting from the other is exactly the
+        fragility the brief asked not to create)."""
+        root_names = {
+            _parse_requirement_name(d) for d in root_pyproject["project"]["dependencies"]
+        }
+        gui_names = {_parse_requirement_name(d) for d in gui_pyproject["project"]["dependencies"]}
+        assert gui_names.isdisjoint(root_names)
+
+    def test_gui_manifest_name_and_version_match_root(
+        self, root_pyproject: dict, gui_pyproject: dict
+    ) -> None:
+        """Sprint 58's audit found the compiled app embedding Flet's own
+        generic defaults (name ``"gui"``, version ``"1.0.0"``) instead of
+        this project's real identity — both values come from whichever
+        pyproject.toml `flet build` reads, so they must match the root."""
+        assert gui_pyproject["project"]["name"] == root_pyproject["project"]["name"]
+        assert gui_pyproject["project"]["version"] == root_pyproject["project"]["version"]
+
+    def test_gui_manifest_declares_the_app_entry_module(self, gui_pyproject: dict) -> None:
+        """``tool.flet.app.module`` makes the ``--module-name app`` CLI
+        flag redundant (defense in depth, not a replacement — the
+        documented build command still passes it explicitly)."""
+        assert gui_pyproject["tool"]["flet"]["app"]["module"] == "app"
+
+    def test_app_module_named_in_the_manifest_actually_exists(self, gui_pyproject: dict) -> None:
+        module = gui_pyproject["tool"]["flet"]["app"]["module"]
+        entry_point = _REPO_ROOT / "motorsport_calendar" / "gui" / f"{module}.py"
+        assert entry_point.is_file()
+
+    def test_dev_package_redirect_points_at_a_real_installable_project_root(
+        self, gui_pyproject: dict
+    ) -> None:
+        """``tool.flet.dev_packages`` is what actually fixes the
+        ``ModuleNotFoundError`` — resolved the same way `flet_cli` itself
+        resolves it (relative to `motorsport_calendar/gui/`, since that's
+        `python_app_path` in the documented build command), then checked
+        against the real filesystem: the target must exist and be an
+        installable project (its own `pyproject.toml` present)."""
+        project_name = gui_pyproject["project"]["name"]
+        dev_packages = gui_pyproject["tool"]["flet"]["dev_packages"]
+        assert project_name in dev_packages
+
+        gui_dir = _REPO_ROOT / "motorsport_calendar" / "gui"
+        target = (gui_dir / dev_packages[project_name]).resolve()
+        assert target == _REPO_ROOT
+        assert (target / "pyproject.toml").is_file()
+        assert (target / "motorsport_calendar" / "__init__.py").is_file()
