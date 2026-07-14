@@ -8,7 +8,7 @@ from .source import Formula3Source
 __all__ = ["Formula3Provider", "Formula3Source"]
 
 
-def _make_provider(source):  # type: ignore[no-untyped-def]
+def _make_provider(source: Formula3Source) -> Formula3Provider:
     """Factory Formula 3 : enveloppe une source dans un Formula3Provider."""
     return Formula3Provider(source)
 

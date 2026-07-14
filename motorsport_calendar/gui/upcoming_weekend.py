@@ -28,6 +28,18 @@ Sprint 32: event *metadata* normalization (which Grand Prix name, circuit,
 and country to show — never "Unknown", never a duplicate line) moved to
 ``gui/event_display.py``. This module only fetches/finds/groups events and
 delegates formatting each one's metadata to that module.
+
+Sprint 42: session-type French labels (``_SESSION_LABELS``/
+``_session_type_label``) moved to ``gui/event_display.py`` as the public
+``session_type_label()`` once ``gui/event_details.py`` needed the exact same
+mapping — same "mutualize on the second real use" principle as Sprint 32.
+
+Sprint 44: ``find_upcoming_weekend``/``_group_entries_for_display`` accept
+an optional ``favorite_ids`` — favorited championships are pulled to the
+front of the card list (a stable sort on top of the existing
+category-based order), shared by both "Ce week-end" and the Dashboard
+(``gui/dashboard.py::build_dashboard_data`` calls this same function) so
+there is exactly one "favorites first" implementation, never two.
 """
 from __future__ import annotations
 
@@ -41,8 +53,8 @@ from motorsport_calendar.gui.components.championship_card import (
     SessionRow,
 )
 from motorsport_calendar.gui.display_names import get_display_name
-from motorsport_calendar.gui.event_display import normalize_event_display
-from motorsport_calendar.models import Event, Session, SessionType
+from motorsport_calendar.gui.event_display import normalize_event_display, session_type_label
+from motorsport_calendar.models import Event, Session
 
 # ---------------------------------------------------------------------------
 # Championships considered — fixed list, independent of config.yaml opt-out.
@@ -53,25 +65,24 @@ WEEKEND_CHAMPIONSHIP_IDS: tuple[str, ...] = (
     "formula2",
     "formula3",
     "f1-academy",
+    "formula-e",
     "wec",
+    "elms",
+    "mlmc",
+    "imsa",
+    "gtwc-europe",
+    "gtwc-america",
+    "gtwc-asia",
+    "igtc",
+    "motogp",
+    "moto2",
+    "moto3",
+    "worldsbk",
 )
 
 # ---------------------------------------------------------------------------
 # French labels — presentation only, same philosophy as display_names.py.
 # ---------------------------------------------------------------------------
-
-_SESSION_LABELS: dict[SessionType, str] = {
-    SessionType.FP1: "Essais Libres 1",
-    SessionType.FP2: "Essais Libres 2",
-    SessionType.FP3: "Essais Libres 3",
-    SessionType.FREE_PRACTICE: "Essais Libres",
-    SessionType.QUALIFYING: "Qualifications",
-    SessionType.SPRINT_QUALIFYING: "Qualifications Sprint",
-    SessionType.SPRINT: "Sprint",
-    SessionType.RACE: "Course",
-    SessionType.TEST: "Essais",
-    SessionType.HYPERPOLE: "Hyperpole",
-}
 
 _DAY_LABELS_FR: tuple[str, ...] = (
     "Lundi",
@@ -86,15 +97,23 @@ _DAY_LABELS_FR: tuple[str, ...] = (
 _UTC = UTC
 
 
-def _session_type_label(session: Session) -> str:
-    return _SESSION_LABELS.get(session.type, session.title)
-
-
 def _circuit_zone(circuit_timezone: str) -> ZoneInfo:
     try:
         return ZoneInfo(circuit_timezone)
     except (ZoneInfoNotFoundError, ValueError):
         return ZoneInfo("UTC")
+
+
+def format_session_datetime(start: datetime, circuit_timezone: str) -> str:
+    """"{Jour} {JJ/MM} {HH:MM}" in the circuit's local timezone.
+
+    Public since Sprint 39: ``gui/dashboard.py`` reuses this for its
+    standalone "prochain départ" headline stat, which — unlike a session
+    row inside a ChampionshipCard (already scoped to a known weekend) —
+    needs the date spelled out, not just the day name.
+    """
+    local = start.astimezone(_circuit_zone(circuit_timezone))
+    return f"{_DAY_LABELS_FR[local.weekday()]} {local:%d/%m} {local:%H:%M}"
 
 
 @dataclass(frozen=True)
@@ -192,16 +211,25 @@ def _next_hint_date(entries: list[WeekendEntry], *, now: datetime) -> date | Non
 # ---------------------------------------------------------------------------
 
 
-def _group_entries_for_display(entries: list[WeekendEntry]) -> list[WeekendEntry]:
+def _group_entries_for_display(
+    entries: list[WeekendEntry], favorite_ids: frozenset[str] = frozenset()
+) -> list[WeekendEntry]:
     """*entries* is already chronologically sorted; partition into Formula
     then Endurance (per categories.py), preserving chronological order
     within each partition — reuses the existing grouping helper as-is.
+
+    Sprint 44: when *favorite_ids* is non-empty, a second stable partition
+    pulls favorited championships to the front — a favorite entry keeps its
+    position relative to other favorites (still category/chronological
+    order among themselves), it just moves ahead of every non-favorite.
     """
     available_ids = [entry.championship_id for entry in entries]
     ordered: list[WeekendEntry] = []
     for _group, ids_in_group in get_groups_for(available_ids):
         ids_set = set(ids_in_group)
         ordered.extend(e for e in entries if e.championship_id in ids_set)
+    if favorite_ids:
+        ordered.sort(key=lambda e: e.championship_id not in favorite_ids)
     return ordered
 
 
@@ -211,7 +239,7 @@ def _build_card(entry: WeekendEntry) -> ChampionshipCardData:
     sessions = sorted(event.sessions, key=lambda s: s.start_datetime)
     rows = tuple(
         SessionRow(
-            label=_session_type_label(session),
+            label=session_type_label(session),
             day_time=(
                 f"{_DAY_LABELS_FR[session.start_datetime.astimezone(tz).weekday()]} "
                 f"{session.start_datetime.astimezone(tz):%H:%M}"
@@ -231,14 +259,25 @@ def _build_card(entry: WeekendEntry) -> ChampionshipCardData:
 
 
 def find_upcoming_weekend(
-    entries: list[WeekendEntry], *, now: datetime, max_weeks_ahead: int = 104
+    entries: list[WeekendEntry],
+    *,
+    now: datetime,
+    max_weeks_ahead: int = 104,
+    favorite_ids: frozenset[str] = frozenset(),
 ) -> WeekendResult:
-    """Top-level entry point: search, group, and format in one call."""
+    """Top-level entry point: search, group, and format in one call.
+
+    Args:
+        favorite_ids: favorited championship ids (Sprint 44) —
+            ``controller.get_upcoming_weekend``/``get_dashboard_data``
+            source these from ``FavoritesService``. Favorited
+            championships are shown first among the returned cards.
+    """
     found = find_next_weekend_entries(entries, now=now, max_weeks_ahead=max_weeks_ahead)
     if found is None:
         return WeekendResult(found=False, next_hint_date=_next_hint_date(entries, now=now))
 
     friday, sunday, matches = found
-    ordered = _group_entries_for_display(matches)
+    ordered = _group_entries_for_display(matches, favorite_ids)
     cards = tuple(_build_card(e) for e in ordered)
     return WeekendResult(found=True, friday=friday, sunday=sunday, cards=cards)

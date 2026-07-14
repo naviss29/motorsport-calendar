@@ -60,9 +60,30 @@ showing "Unknown", an empty line, or two identical lines.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import unicodedata
 
 from motorsport_calendar.gui.strings import STRINGS
-from motorsport_calendar.models import Circuit, Event
+from motorsport_calendar.models import Circuit, Event, Session, SessionType
+
+
+def normalize_key(text: str) -> str:
+    """Casefold + strip accents + keep only alphanumeric characters.
+
+    A "compact" identity key so separator/case/accent differences never
+    prevent two spellings of the same real-world entity from matching —
+    "Le Mans"/"lemans" and "spa francorchamps"/"Spa-Francorchamps" must all
+    collapse to the same key. Introduced for search matching (Sprint 45,
+    ``gui/search_service.py``), promoted here once circuit identity
+    (Sprint 47, ``gui/circuit_service.py``) needed the exact same
+    normalization to deduplicate the same physical circuit across
+    providers with inconsistent spelling — same "mutualize on the second
+    real use" principle applied throughout this module (see
+    ``session_type_label``).
+    """
+    decomposed = unicodedata.normalize("NFKD", text)
+    without_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return "".join(c for c in without_accents.casefold() if c.isalnum())
+
 
 # ---------------------------------------------------------------------------
 # Championships whose raw event name is a bare round descriptor ("Belgian")
@@ -121,6 +142,31 @@ _COUNTRY_LABELS: dict[str, tuple[str, str]] = {
 # Values a provider uses to mean "I don't know the country" — never shown as-is.
 _COUNTRY_UNKNOWN_SENTINELS = frozenset({"unknown", ""})
 
+# SessionType -> French label. Sprint 42: promoted from upcoming_weekend.py's
+# own private mapping once a second consumer (gui/event_details.py) needed
+# the exact same session-type vocabulary — same "mutualize on the second
+# real use" principle already applied to providers (Sprint 35) and
+# controller fetch pipelines (Sprints 39-40).
+_SESSION_TYPE_LABELS: dict[SessionType, str] = {
+    SessionType.FP1: "Essais Libres 1",
+    SessionType.FP2: "Essais Libres 2",
+    SessionType.FP3: "Essais Libres 3",
+    SessionType.FREE_PRACTICE: "Essais Libres",
+    SessionType.QUALIFYING: "Qualifications",
+    SessionType.SPRINT_QUALIFYING: "Qualifications Sprint",
+    SessionType.SPRINT: "Sprint",
+    SessionType.RACE: "Course",
+    SessionType.TEST: "Essais",
+    SessionType.HYPERPOLE: "Hyperpole",
+}
+
+
+def session_type_label(session: Session) -> str:
+    """French label for *session*'s type — falls back to the session's own
+    ``title`` for any type not in the mapping (defensive; every current
+    ``SessionType`` is mapped)."""
+    return _SESSION_TYPE_LABELS.get(session.type, session.title)
+
 
 @dataclass(frozen=True)
 class EventDisplayData:
@@ -129,11 +175,20 @@ class EventDisplayData:
     ``circuit_name``/``country`` are ``None`` when that line should be
     hidden entirely — never an empty string, never the literal "Unknown".
     ``grand_prix_name`` is always a non-empty string.
+
+    ``circuit_key`` (Sprint 47) is the circuit's stable identity —
+    ``normalize_key(circuit_name)`` — or ``None`` in lockstep with
+    ``circuit_name``: when the circuit line is hidden for this event
+    (redundant with the headline), there is no visible text to attach a
+    click to, so nothing is clickable either. Used by
+    ``gui/event_details.py``/``gui/circuit_service.py`` to open the
+    "fiche Circuit" from a clicked circuit name — never interpreted here.
     """
 
     grand_prix_name: str
     circuit_name: str | None
     country: str | None
+    circuit_key: str | None
 
 
 def country_label(country: str) -> str:
@@ -183,13 +238,35 @@ def _resolve_circuit_name(circuit: Circuit, raw_name: str, grand_prix_name: str)
     return None
 
 
-def _resolve_country(raw_country: str) -> str | None:
+def resolve_country(raw_country: str) -> str | None:
     """Rule 3: the literal "Unknown" sentinel (or a blank value) hides the
-    country line — it is never displayed as-is."""
+    country line — it is never displayed as-is.
+
+    Public since Sprint 47: ``gui/circuit_service.py`` reuses this exact
+    same "never show Unknown" rule for a circuit's own country field —
+    the resolution logic has nothing to do with any one event's headline
+    (unlike ``_resolve_circuit_name``), so it applies identically to a
+    circuit-as-entity.
+    """
     cleaned = _clean(raw_country)
     if cleaned.casefold() in _COUNTRY_UNKNOWN_SENTINELS:
         return None
     return country_label(cleaned)
+
+
+def circuit_display_name(circuit: Circuit) -> str:
+    """The circuit's own name — first non-empty of ``circuit.name``/
+    ``circuit.city`` — independent of any single event's headline.
+
+    Unlike ``_resolve_circuit_name`` (which hides a value that would be
+    *redundant* with one specific event's card), this always answers "what
+    is this circuit called" — used to identify/name a circuit as an entity
+    in its own right (Sprint 47, ``gui/circuit_service.py``), not to
+    decide whether a display line should render under one event's
+    headline.
+    """
+    fallback = _first_nonempty(circuit.name, circuit.city)
+    return fallback if fallback is not None else STRINGS.circuit_name_fallback
 
 
 def normalize_event_display(championship_id: str, event: Event) -> EventDisplayData:
@@ -205,9 +282,11 @@ def normalize_event_display(championship_id: str, event: Event) -> EventDisplayD
     raw_name = _clean(event.name)
     grand_prix_name = _display_grand_prix_name(championship_id, raw_name, event.circuit)
     circuit_name = _resolve_circuit_name(event.circuit, raw_name, grand_prix_name)
-    country = _resolve_country(event.circuit.country)
+    country = resolve_country(event.circuit.country)
+    circuit_key = normalize_key(circuit_name) if circuit_name is not None else None
     return EventDisplayData(
         grand_prix_name=grand_prix_name,
         circuit_name=circuit_name,
         country=country,
+        circuit_key=circuit_key,
     )

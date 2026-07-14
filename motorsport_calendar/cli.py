@@ -1,11 +1,12 @@
 """CLI entry point — no business logic, only presentation and delegation."""
 
+from datetime import UTC
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 app = typer.Typer(
     name="motocal",
@@ -70,22 +71,44 @@ def providers() -> None:
     console.print(table)
 
 
-@app.command("generate-f1")
-def generate_f1(
-    year: Annotated[int, typer.Argument(help="Formula 1 season year (e.g. 2024)")],
-    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
-    refresh: Annotated[
-        bool,
-        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
-    ] = False,
+def _run_generate_command(
+    *,
+    championship_id: str,
+    year: int,
+    output: Path,
+    refresh: bool,
+    fetch_label: str,
+    default_source: str,
+    error_prefix: str,
+    not_implemented_message: str | None = None,
 ) -> None:
-    """Fetch the Formula 1 calendar via OpenF1 and export it as an ICS file."""
+    """Shared body for every single-championship ``generate-*`` command.
+
+    Each ``generate-*`` Typer command stays a thin wrapper (own docstring/
+    help text, since Typer introspects the function signature for
+    ``--help``) that only forwards its arguments here — this is the only
+    place the fetch/error-handling/export logic lives. Introduced Sprint 34
+    when adding Formula E made a 6th near-identical copy impossible to
+    justify; the five pre-existing commands were refactored onto this same
+    helper with byte-identical output (locked down by their existing tests).
+
+    Args:
+        championship_id: Registry id, e.g. "formula1", "wec".
+        fetch_label: Display label in "Fetching {label} {year} calendar…".
+        default_source: Source name used when config.yaml has no override.
+        error_prefix: Prefix in "{prefix} error {code}: {url}" / "{prefix}
+            timeout (10 s). Try again later.".
+        not_implemented_message: When set, a stub source raising
+            NotImplementedError is reported with this message (formatted
+            with ``source_name=``) instead of propagating — used by WEC.
+    """
     import asyncio
 
     import httpx
 
     from motorsport_calendar.cache import HttpCache
     from motorsport_calendar.config import ConfigService
+    from motorsport_calendar.config.models import ProviderConfig
     from motorsport_calendar.core.registry import registry
     from motorsport_calendar.core.source_registry import source_registry
     from motorsport_calendar.exporters.ics import IcsExporter
@@ -103,48 +126,52 @@ def generate_f1(
     registry.discover()
     source_registry.discover()
 
-    provider_cfg = config.providers.get("formula1")
+    provider_cfg = config.providers.get(championship_id)
     if provider_cfg is None:
-        from motorsport_calendar.config.models import ProviderConfig
-        provider_cfg = ProviderConfig(source="openf1")
+        provider_cfg = ProviderConfig(source=default_source)
 
-    source_name = provider_cfg.source or "openf1"
+    source_name = provider_cfg.source or default_source
 
     try:
-        make_source = source_registry.get("formula1", source_name)
+        make_source = source_registry.get(championship_id, source_name)
     except KeyError as exc:
         err_console.print(str(exc))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
     source = make_source(cache, refresh)
 
     try:
-        make_provider = registry.get("formula1")
+        make_provider = registry.get(championship_id)
     except KeyError as exc:
         err_console.print(str(exc))
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
     provider = make_provider(source)
 
-    async def _fetch() -> list:
-        return await provider.fetch_events("formula1", year)
+    async def _fetch() -> list[Any]:
+        return await provider.fetch_events(championship_id, year)  # type: ignore[no-any-return]
 
     cache_note = " [yellow](--refresh)[/]" if refresh else ""
     console.print(
-        f"Fetching F1 [bold cyan]{year}[/] calendar "
+        f"Fetching {fetch_label} [bold cyan]{year}[/] calendar "
         f"via [green]{source_name}[/]…{cache_note}"
     )
 
     try:
         events = asyncio.run(_fetch())
+    except NotImplementedError as exc:
+        if not_implemented_message is None:
+            raise
+        err_console.print(not_implemented_message.format(source_name=source_name))
+        raise typer.Exit(code=1) from exc
     except httpx.HTTPStatusError as exc:
         err_console.print(
-            f"OpenF1 API error {exc.response.status_code}: {exc.request.url}"
+            f"{error_prefix} error {exc.response.status_code}: {exc.request.url}"
         )
-        raise typer.Exit(code=1)
-    except httpx.TimeoutException:
-        err_console.print("OpenF1 API timeout (10 s). Try again later.")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
+    except httpx.TimeoutException as exc:
+        err_console.print(f"{error_prefix} timeout (10 s). Try again later.")
+        raise typer.Exit(code=1) from exc
 
     IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
 
@@ -153,6 +180,27 @@ def generate_f1(
     console.print(
         f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
         f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+    )
+
+
+@app.command("generate-f1")
+def generate_f1(
+    year: Annotated[int, typer.Argument(help="Formula 1 season year (e.g. 2024)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Formula 1 calendar via OpenF1 and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="formula1",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="F1",
+        default_source="openf1",
+        error_prefix="OpenF1 API",
     )
 
 
@@ -166,78 +214,14 @@ def generate_f2(
     ] = False,
 ) -> None:
     """Fetch the Formula 2 calendar and export it as an ICS file."""
-    import asyncio
-
-    import httpx
-
-    from motorsport_calendar.cache import HttpCache
-    from motorsport_calendar.config import ConfigService
-    from motorsport_calendar.core.registry import registry
-    from motorsport_calendar.core.source_registry import source_registry
-    from motorsport_calendar.exporters.ics import IcsExporter
-
-    config = ConfigService()
-
-    cache: HttpCache | None = None
-    if config.cache.enabled:
-        cache = HttpCache(
-            cache_dir=config.cache.resolved_path,
-            ttl=config.cache.ttl_seconds,
-        )
-
-    registry.discover()
-    source_registry.discover()
-
-    provider_cfg = config.providers.get("formula2")
-    if provider_cfg is None:
-        from motorsport_calendar.config.models import ProviderConfig
-        provider_cfg = ProviderConfig(source="f1calendar")
-
-    source_name = provider_cfg.source or "f1calendar"
-
-    try:
-        make_source = source_registry.get("formula2", source_name)
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    source = make_source(cache, refresh)
-
-    try:
-        make_provider = registry.get("formula2")
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    provider = make_provider(source)
-
-    async def _fetch() -> list:
-        return await provider.fetch_events("formula2", year)
-
-    cache_note = " [yellow](--refresh)[/]" if refresh else ""
-    console.print(
-        f"Fetching F2 [bold cyan]{year}[/] calendar "
-        f"via [green]{source_name}[/]…{cache_note}"
-    )
-
-    try:
-        events = asyncio.run(_fetch())
-    except httpx.HTTPStatusError as exc:
-        err_console.print(
-            f"F2 source error {exc.response.status_code}: {exc.request.url}"
-        )
-        raise typer.Exit(code=1)
-    except httpx.TimeoutException:
-        err_console.print("F2 source timeout (10 s). Try again later.")
-        raise typer.Exit(code=1)
-
-    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
-
-    count = len(events)
-    sessions_count = sum(len(e.sessions) for e in events)
-    console.print(
-        f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
-        f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+    _run_generate_command(
+        championship_id="formula2",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="F2",
+        default_source="f1calendar",
+        error_prefix="F2 source",
     )
 
 
@@ -251,78 +235,14 @@ def generate_f3(
     ] = False,
 ) -> None:
     """Fetch the FIA Formula 3 calendar and export it as an ICS file."""
-    import asyncio
-
-    import httpx
-
-    from motorsport_calendar.cache import HttpCache
-    from motorsport_calendar.config import ConfigService
-    from motorsport_calendar.core.registry import registry
-    from motorsport_calendar.core.source_registry import source_registry
-    from motorsport_calendar.exporters.ics import IcsExporter
-
-    config = ConfigService()
-
-    cache: HttpCache | None = None
-    if config.cache.enabled:
-        cache = HttpCache(
-            cache_dir=config.cache.resolved_path,
-            ttl=config.cache.ttl_seconds,
-        )
-
-    registry.discover()
-    source_registry.discover()
-
-    provider_cfg = config.providers.get("formula3")
-    if provider_cfg is None:
-        from motorsport_calendar.config.models import ProviderConfig
-        provider_cfg = ProviderConfig(source="f1calendar")
-
-    source_name = provider_cfg.source or "f1calendar"
-
-    try:
-        make_source = source_registry.get("formula3", source_name)
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    source = make_source(cache, refresh)
-
-    try:
-        make_provider = registry.get("formula3")
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    provider = make_provider(source)
-
-    async def _fetch() -> list:
-        return await provider.fetch_events("formula3", year)
-
-    cache_note = " [yellow](--refresh)[/]" if refresh else ""
-    console.print(
-        f"Fetching F3 [bold cyan]{year}[/] calendar "
-        f"via [green]{source_name}[/]…{cache_note}"
-    )
-
-    try:
-        events = asyncio.run(_fetch())
-    except httpx.HTTPStatusError as exc:
-        err_console.print(
-            f"F3 source error {exc.response.status_code}: {exc.request.url}"
-        )
-        raise typer.Exit(code=1)
-    except httpx.TimeoutException:
-        err_console.print("F3 source timeout (10 s). Try again later.")
-        raise typer.Exit(code=1)
-
-    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
-
-    count = len(events)
-    sessions_count = sum(len(e.sessions) for e in events)
-    console.print(
-        f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
-        f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+    _run_generate_command(
+        championship_id="formula3",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="F3",
+        default_source="f1calendar",
+        error_prefix="F3 source",
     )
 
 
@@ -336,78 +256,77 @@ def generate_f1_academy(
     ] = False,
 ) -> None:
     """Fetch the F1 Academy calendar and export it as an ICS file."""
-    import asyncio
-
-    import httpx
-
-    from motorsport_calendar.cache import HttpCache
-    from motorsport_calendar.config import ConfigService
-    from motorsport_calendar.core.registry import registry
-    from motorsport_calendar.core.source_registry import source_registry
-    from motorsport_calendar.exporters.ics import IcsExporter
-
-    config = ConfigService()
-
-    cache: HttpCache | None = None
-    if config.cache.enabled:
-        cache = HttpCache(
-            cache_dir=config.cache.resolved_path,
-            ttl=config.cache.ttl_seconds,
-        )
-
-    registry.discover()
-    source_registry.discover()
-
-    provider_cfg = config.providers.get("f1-academy")
-    if provider_cfg is None:
-        from motorsport_calendar.config.models import ProviderConfig
-        provider_cfg = ProviderConfig(source="f1calendar")
-
-    source_name = provider_cfg.source or "f1calendar"
-
-    try:
-        make_source = source_registry.get("f1-academy", source_name)
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    source = make_source(cache, refresh)
-
-    try:
-        make_provider = registry.get("f1-academy")
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    provider = make_provider(source)
-
-    async def _fetch() -> list:
-        return await provider.fetch_events("f1-academy", year)
-
-    cache_note = " [yellow](--refresh)[/]" if refresh else ""
-    console.print(
-        f"Fetching F1 Academy [bold cyan]{year}[/] calendar "
-        f"via [green]{source_name}[/]…{cache_note}"
+    _run_generate_command(
+        championship_id="f1-academy",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="F1 Academy",
+        default_source="f1calendar",
+        error_prefix="F1 Academy source",
     )
 
-    try:
-        events = asyncio.run(_fetch())
-    except httpx.HTTPStatusError as exc:
-        err_console.print(
-            f"F1 Academy source error {exc.response.status_code}: {exc.request.url}"
-        )
-        raise typer.Exit(code=1)
-    except httpx.TimeoutException:
-        err_console.print("F1 Academy source timeout (10 s). Try again later.")
-        raise typer.Exit(code=1)
 
-    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
+@app.command("generate-formula-e")
+def generate_formula_e(
+    year: Annotated[int, typer.Argument(help="Formula E season year (e.g. 2025)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Formula E calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="formula-e",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="Formula E",
+        default_source="f1calendar",
+        error_prefix="Formula E source",
+    )
 
-    count = len(events)
-    sessions_count = sum(len(e.sessions) for e in events)
-    console.print(
-        f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
-        f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+
+@app.command("generate-elms")
+def generate_elms(
+    year: Annotated[int, typer.Argument(help="ELMS season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the European Le Mans Series calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="elms",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="ELMS",
+        default_source="aco_scraper",
+        error_prefix="ELMS source",
+    )
+
+
+@app.command("generate-mlmc")
+def generate_mlmc(
+    year: Annotated[int, typer.Argument(help="MLMC season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Michelin Le Mans Cup calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="mlmc",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="MLMC",
+        default_source="aco_scraper",
+        error_prefix="MLMC source",
     )
 
 
@@ -421,84 +340,217 @@ def generate_wec(
     ] = False,
 ) -> None:
     """Fetch the FIA WEC calendar and export it as an ICS file."""
-    import asyncio
-
-    import httpx
-
-    from motorsport_calendar.cache import HttpCache
-    from motorsport_calendar.config import ConfigService
-    from motorsport_calendar.core.registry import registry
-    from motorsport_calendar.core.source_registry import source_registry
-    from motorsport_calendar.exporters.ics import IcsExporter
-
-    config = ConfigService()
-
-    cache: HttpCache | None = None
-    if config.cache.enabled:
-        cache = HttpCache(
-            cache_dir=config.cache.resolved_path,
-            ttl=config.cache.ttl_seconds,
-        )
-
-    registry.discover()
-    source_registry.discover()
-
-    provider_cfg = config.providers.get("wec")
-    if provider_cfg is None:
-        from motorsport_calendar.config.models import ProviderConfig
-        provider_cfg = ProviderConfig(source="official")
-
-    source_name = provider_cfg.source or "official"
-
-    try:
-        make_source = source_registry.get("wec", source_name)
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    source = make_source(cache, refresh)
-
-    try:
-        make_provider = registry.get("wec")
-    except KeyError as exc:
-        err_console.print(str(exc))
-        raise typer.Exit(code=1)
-
-    provider = make_provider(source)
-
-    async def _fetch() -> list:
-        return await provider.fetch_events("wec", year)
-
-    cache_note = " [yellow](--refresh)[/]" if refresh else ""
-    console.print(
-        f"Fetching WEC [bold cyan]{year}[/] calendar "
-        f"via [green]{source_name}[/]…{cache_note}"
+    _run_generate_command(
+        championship_id="wec",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="WEC",
+        default_source="official",
+        error_prefix="WEC API",
+        not_implemented_message=(
+            "La source WEC '[bold]{source_name}[/]' n'est pas encore implémentée. "
+            "Consulter le backlog pour l'état d'avancement."
+        ),
     )
 
-    try:
-        events = asyncio.run(_fetch())
-    except NotImplementedError:
-        err_console.print(
-            f"La source WEC '[bold]{source_name}[/]' n'est pas encore implémentée. "
+
+@app.command("generate-imsa")
+def generate_imsa(
+    year: Annotated[int, typer.Argument(help="IMSA season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the IMSA WeatherTech SportsCar Championship calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="imsa",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="IMSA",
+        default_source="official",
+        error_prefix="IMSA API",
+        not_implemented_message=(
+            "La source IMSA '[bold]{source_name}[/]' n'est pas encore implémentée. "
             "Consulter le backlog pour l'état d'avancement."
-        )
-        raise typer.Exit(code=1)
-    except httpx.HTTPStatusError as exc:
-        err_console.print(
-            f"WEC API error {exc.response.status_code}: {exc.request.url}"
-        )
-        raise typer.Exit(code=1)
-    except httpx.TimeoutException:
-        err_console.print("WEC API timeout (10 s). Try again later.")
-        raise typer.Exit(code=1)
+        ),
+    )
 
-    IcsExporter(alarm_minutes=config.ics.alarm_minutes).export(events, output)
 
-    count = len(events)
-    sessions_count = sum(len(e.sessions) for e in events)
-    console.print(
-        f"[green]✓[/] {count} event{'s' if count != 1 else ''}, "
-        f"{sessions_count} session{'s' if sessions_count != 1 else ''} → [bold]{output}[/]"
+@app.command("generate-gtwc-europe")
+def generate_gtwc_europe(
+    year: Annotated[int, typer.Argument(help="GT World Challenge Europe season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the GT World Challenge Europe calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="gtwc-europe",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="GT World Challenge Europe",
+        default_source="sro_scraper",
+        error_prefix="GT World Challenge Europe source",
+    )
+
+
+@app.command("generate-gtwc-america")
+def generate_gtwc_america(
+    year: Annotated[int, typer.Argument(help="GT World Challenge America season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the GT World Challenge America calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="gtwc-america",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="GT World Challenge America",
+        default_source="sro_scraper",
+        error_prefix="GT World Challenge America source",
+    )
+
+
+@app.command("generate-gtwc-asia")
+def generate_gtwc_asia(
+    year: Annotated[int, typer.Argument(help="GT World Challenge Asia season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the GT World Challenge Asia calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="gtwc-asia",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="GT World Challenge Asia",
+        default_source="sro_scraper",
+        error_prefix="GT World Challenge Asia source",
+    )
+
+
+@app.command("generate-igtc")
+def generate_igtc(
+    year: Annotated[
+        int, typer.Argument(help="Intercontinental GT Challenge season year (e.g. 2026)")
+    ],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Intercontinental GT Challenge calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="igtc",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="IGTC",
+        default_source="sro_scraper",
+        error_prefix="IGTC source",
+    )
+
+
+@app.command("generate-motogp")
+def generate_motogp(
+    year: Annotated[int, typer.Argument(help="MotoGP season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the MotoGP calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="motogp",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="MotoGP",
+        default_source="pulselive",
+        error_prefix="MotoGP source",
+    )
+
+
+@app.command("generate-moto2")
+def generate_moto2(
+    year: Annotated[int, typer.Argument(help="Moto2 season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Moto2 calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="moto2",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="Moto2",
+        default_source="pulselive",
+        error_prefix="Moto2 source",
+    )
+
+
+@app.command("generate-moto3")
+def generate_moto3(
+    year: Annotated[int, typer.Argument(help="Moto3 season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the Moto3 calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="moto3",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="Moto3",
+        default_source="pulselive",
+        error_prefix="Moto3 source",
+    )
+
+
+@app.command("generate-worldsbk")
+def generate_worldsbk(
+    year: Annotated[int, typer.Argument(help="WorldSBK season year (e.g. 2026)")],
+    output: Annotated[Path, typer.Argument(help="Destination .ics file")],
+    refresh: Annotated[
+        bool,
+        typer.Option("--refresh", help="Ignorer le cache et re-télécharger les données."),
+    ] = False,
+) -> None:
+    """Fetch the World Superbike (WorldSBK) calendar and export it as an ICS file."""
+    _run_generate_command(
+        championship_id="worldsbk",
+        year=year,
+        output=output,
+        refresh=refresh,
+        fetch_label="WorldSBK",
+        default_source="official",
+        error_prefix="WorldSBK API",
+        not_implemented_message=(
+            "La source WorldSBK '[bold]{source_name}[/]' n'est pas encore implémentée. "
+            "Consulter le backlog pour l'état d'avancement."
+        ),
     )
 
 
@@ -513,7 +565,7 @@ def generate(
 ) -> None:
     """Fetch all enabled championships and export them as a single ICS file."""
     import asyncio
-    from datetime import datetime, timezone as _tz
+    from datetime import datetime
     from typing import Any
 
     import httpx
@@ -551,7 +603,7 @@ def generate(
     )
 
     provider_list: list[tuple[str, Any]] = []
-    results: list[tuple[str, list, str | None]] = []
+    results: list[tuple[str, list[Any], str | None]] = []
 
     for championship_id in enabled_ids:
         provider_cfg = config.providers.get(championship_id) or ProviderConfig()
@@ -574,21 +626,29 @@ def generate(
         source = make_source(cache, refresh)
         provider_list.append((championship_id, make_provider(source)))
 
-    async def _fetch_all() -> list[tuple[str, list, str | None]]:
-        fetch_results: list[tuple[str, list, str | None]] = []
-        for cid, prov in provider_list:
-            try:
-                events = await prov.fetch_events(cid, year)
-                fetch_results.append((cid, list(events), None))
-            except NotImplementedError:
-                fetch_results.append((cid, [], "source non implémentée"))
-            except httpx.HTTPStatusError as exc:
-                fetch_results.append((cid, [], f"HTTP {exc.response.status_code}"))
-            except httpx.TimeoutException:
-                fetch_results.append((cid, [], "timeout"))
-            except Exception as exc:  # noqa: BLE001
-                fetch_results.append((cid, [], str(exc)))
-        return fetch_results
+    async def _fetch_one(cid: str, prov: Any) -> tuple[str, list[Any], str | None]:
+        try:
+            events = await prov.fetch_events(cid, year)
+            return (cid, list(events), None)
+        except NotImplementedError:
+            return (cid, [], "source non implémentée")
+        except httpx.HTTPStatusError as exc:
+            return (cid, [], f"HTTP {exc.response.status_code}")
+        except httpx.TimeoutException:
+            return (cid, [], "timeout")
+        except Exception as exc:
+            return (cid, [], str(exc))
+
+    async def _fetch_all() -> list[tuple[str, list[Any], str | None]]:
+        # Sprint 50 — chaque provider interroge une API distante indépendante ;
+        # les récupérer en parallèle (au lieu d'un for/await séquentiel) réduit
+        # le temps total à celui du provider le plus lent, pas la somme de tous
+        # (mesuré ~10x sur 10 providers simulés à latence égale). asyncio.gather
+        # préserve l'ordre de provider_list dans le résultat, donc le fichier
+        # ICS final et les résumés affichés restent strictement identiques.
+        return list(
+            await asyncio.gather(*(_fetch_one(cid, prov) for cid, prov in provider_list))
+        )
 
     results.extend(asyncio.run(_fetch_all()))
 
@@ -610,7 +670,7 @@ def generate(
     all_events.sort(
         key=lambda e: min(
             (s.start_datetime for s in e.sessions),
-            default=datetime.max.replace(tzinfo=_tz.utc),
+            default=datetime.max.replace(tzinfo=UTC),
         )
     )
 

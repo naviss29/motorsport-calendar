@@ -75,12 +75,14 @@ class CalendarService:
         exporter_name: str,
         output: Path,
     ) -> None:
-        """Fetch a championship and write it to a file.
+        """Fetch a championship's events and write them to a file.
 
         Raises:
             KeyError: If provider or exporter is not registered.
         """
         if exporter_name not in self._exporters:
             raise KeyError(f"Exporter '{exporter_name}' is not registered.")
-        championship = await self.get_championship(provider_name, championship_id, year)
-        self._exporters[exporter_name].export(championship, output)
+        if provider_name not in self._providers:
+            raise KeyError(f"Provider '{provider_name}' is not registered.")
+        events = await self._providers[provider_name].fetch_events(championship_id, year)
+        self._exporters[exporter_name].export(events, output)

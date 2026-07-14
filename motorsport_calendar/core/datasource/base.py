@@ -3,7 +3,7 @@
 from abc import ABC
 
 
-class DataSource(ABC):
+class DataSource(ABC):  # noqa: B024 — deliberate marker base, no shared abstract method
     """Common marker base for all data-acquisition sources.
 
     Subclass via the appropriate specialisation:

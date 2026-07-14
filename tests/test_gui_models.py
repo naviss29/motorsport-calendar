@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
-from motorsport_calendar.gui.models import GenerateState
+from motorsport_calendar.gui.models import (
+    DEFAULT_YEAR_SENTINEL,
+    GenerateState,
+    resolve_default_year,
+)
 
 
 class TestGenerateStateDefaults:
@@ -78,60 +80,43 @@ class TestGenerateStateIsReady:
         state.is_generating = False
         assert state.is_ready()
 
+    def test_no_wizard_step_machinery_remains(self) -> None:
+        """Sprint 43: the 4-step wizard was replaced by a single
+        reorganized page — current_step/STEP_COUNT/step_valid/can_advance/
+        can_go_back no longer exist."""
+        state = GenerateState()
+        for attr in (
+            "current_step",
+            "STEP_COUNT",
+            "step_valid",
+            "can_advance",
+            "can_go_back",
+        ):
+            assert not hasattr(state, attr), f"stale wizard attribute still present: {attr}"
 
-class TestGenerateStateWizard:
-    def test_default_step_is_zero(self) -> None:
-        assert GenerateState().current_step == 0
 
-    def test_step_count_is_four(self) -> None:
-        assert GenerateState.STEP_COUNT == 4
+class TestResolveDefaultYear:
+    """Sprint 52 — "année par défaut" preference decoding."""
 
-    def test_step_zero_always_valid(self) -> None:
-        assert GenerateState().step_valid(0)
+    def test_sentinel_resolves_to_current_year(self) -> None:
+        assert resolve_default_year(DEFAULT_YEAR_SENTINEL) == date.today().year
 
-    def test_step_one_invalid_without_championships(self) -> None:
-        assert not GenerateState().step_valid(1)
+    def test_sentinel_resolves_to_explicit_current_year(self) -> None:
+        assert resolve_default_year(DEFAULT_YEAR_SENTINEL, current_year=2030) == 2030
 
-    def test_step_one_valid_with_championships(self) -> None:
-        state = GenerateState(selected_championships=["formula1"])
-        assert state.step_valid(1)
+    def test_literal_year_string_is_parsed(self) -> None:
+        assert resolve_default_year("2027") == 2027
 
-    def test_step_two_invalid_without_output_path(self) -> None:
-        assert not GenerateState().step_valid(2)
+    def test_literal_year_ignores_current_year_override(self) -> None:
+        assert resolve_default_year("2027", current_year=2030) == 2027
 
-    def test_step_two_valid_with_output_path(self) -> None:
-        state = GenerateState(output_path="/tmp/out.ics")
-        assert state.step_valid(2)
+    def test_corrupted_value_falls_back_to_current_year(self) -> None:
+        """A hand-edited or corrupted preferences file must never crash
+        "Mon calendrier"'s startup — falls back to today's year instead."""
+        assert resolve_default_year("not-a-year") == date.today().year
 
-    def test_step_three_mirrors_is_ready(self) -> None:
-        state = GenerateState(
-            selected_championships=["formula1"],
-            output_path="/tmp/out.ics",
-        )
-        assert state.step_valid(3) == state.is_ready()
+    def test_corrupted_value_falls_back_to_explicit_current_year(self) -> None:
+        assert resolve_default_year("not-a-year", current_year=2030) == 2030
 
-    def test_unknown_step_raises(self) -> None:
-        with pytest.raises(ValueError):
-            GenerateState().step_valid(4)
-
-    def test_can_go_back_false_on_first_step(self) -> None:
-        assert not GenerateState(current_step=0).can_go_back()
-
-    def test_can_go_back_true_after_first_step(self) -> None:
-        assert GenerateState(current_step=1).can_go_back()
-
-    def test_can_advance_false_when_current_step_invalid(self) -> None:
-        state = GenerateState(current_step=1)  # no championships selected
-        assert not state.can_advance()
-
-    def test_can_advance_true_when_current_step_valid(self) -> None:
-        state = GenerateState(current_step=1, selected_championships=["formula1"])
-        assert state.can_advance()
-
-    def test_can_advance_false_on_last_step_even_if_valid(self) -> None:
-        state = GenerateState(
-            current_step=3,
-            selected_championships=["formula1"],
-            output_path="/tmp/out.ics",
-        )
-        assert not state.can_advance()
+    def test_empty_string_falls_back_to_current_year(self) -> None:
+        assert resolve_default_year("") == date.today().year

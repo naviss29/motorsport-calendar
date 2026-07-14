@@ -4,13 +4,26 @@ Usage:
     motocal-gui
     python -m motorsport_calendar.gui
 
-Icon customization (Sprint 23 placeholder):
-  1. Place your PNG icon at motorsport_calendar/gui/assets/icon.png
-  2. Uncomment the assets_dir line below
-  3. Set page.window.icon = "icon.png" at the top of build_main_view()
+Assets (Sprint 49 — Brand Set v1.0, see gui/assets/logo/README.md): served
+from ``gui/assets/`` — icon.png/icon_windows.ico (window/taskbar icon,
+``page.window.icon`` set in ``main_view.py``), favicon-16/32.png, and
+``logo/`` (mc-icon.svg/logo-horizontal.svg/logo-vertical.svg, not yet
+consumed by any view — see that README for the anticipated call sites,
+unchanged this sprint: no Design System evolution).
 """
 
 from __future__ import annotations
+
+from pathlib import Path
+
+# Flet's own ``assets_dir`` resolves relative strings against the current
+# working directory at launch time, not against this file's location
+# (confirmed: ``flet/app.py``'s ``__get_assets_dir_path(..., relative_to_cwd=True)``)
+# — a packaged/installed ``motocal-gui`` can be launched from anywhere, so a
+# CWD-relative string would silently fail to find the assets outside this
+# project's own directory. Resolved from ``__file__`` instead: portable
+# across machines/install locations, never a literal hardcoded path.
+_ASSETS_DIR = str(Path(__file__).parent / "assets")
 
 
 def main() -> None:
@@ -30,7 +43,7 @@ def main() -> None:
     ft.run(
         main=build_main_view,
         view=ft.AppView.FLET_APP,
-        # assets_dir="motorsport_calendar/gui/assets",  # uncomment when icon.png is ready
+        assets_dir=_ASSETS_DIR,
     )
 
 

@@ -18,7 +18,7 @@ class JsonDataSource(DataSource):
         class MyApiSource(JsonDataSource):
             async def fetch_json(
                 self, url: str, params: dict[str, Any]
-            ) -> list | dict:
+            ) -> list[Any] | dict[str, Any]:
                 async with httpx.AsyncClient() as client:
                     r = await client.get(url, params=params)
                     r.raise_for_status()
@@ -26,7 +26,9 @@ class JsonDataSource(DataSource):
     """
 
     @abstractmethod
-    async def fetch_json(self, url: str, params: dict[str, Any]) -> list | dict:
+    async def fetch_json(
+        self, url: str, params: dict[str, Any]
+    ) -> list[Any] | dict[str, Any]:
         """Fetch JSON from *url* with optional query *params*.
 
         Args:

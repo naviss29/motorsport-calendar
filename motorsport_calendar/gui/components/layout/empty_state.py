@@ -23,7 +23,9 @@ def EmptyState(
     """Return a card-wrapped empty-state block.
 
     Args:
-        title: the main message (e.g. "Aucune course ce week-end.").
+        title: the main message — a short label, never a full sentence
+            (e.g. "Aucune course ce week-end", no trailing period; see
+            ``strings.py``'s own Sprint 54 note on this convention).
         message: optional secondary line (e.g. a hint, or "coming soon").
         icon: optional icon shown above the title.
     """

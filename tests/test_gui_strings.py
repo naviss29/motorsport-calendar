@@ -68,22 +68,22 @@ class TestStrings:
         assert s.close_btn == "OK"
         assert s.app_title == "Motorsport Calendar"
 
-    def test_wizard_step_labels_still_present(self) -> None:
-        """Sprint 28: the pastilles' own labels must survive the cleanup."""
+    def test_wizard_strings_removed(self) -> None:
+        """Sprint 43: the 4-step wizard was replaced by a single
+        reorganized page — every wizard_* string (step labels, nav
+        buttons, recap rows) is gone with it."""
         for key in (
             "wizard_step_season",
             "wizard_step_championships",
             "wizard_step_destination",
             "wizard_step_create",
-        ):
-            assert hasattr(STRINGS, key)
-
-    def test_redundant_wizard_step_titles_removed(self) -> None:
-        """Sprint 28: "Étape N — ..." title + help text dropped — the step
-        indicator (pastilles) is enough on its own, per-step body starts
-        directly with its field.
-        """
-        for key in (
+            "wizard_back_btn",
+            "wizard_next_btn",
+            "wizard_edit_btn",
+            "wizard_recap_season",
+            "wizard_recap_championships",
+            "wizard_recap_destination",
+            "wizard_recap_none",
             "wizard_title_season",
             "wizard_help_season",
             "wizard_title_championships",
@@ -94,6 +94,34 @@ class TestStrings:
             "wizard_help_create",
         ):
             assert not hasattr(STRINGS, key), f"stale wizard string still present: {key}"
+
+    def test_dead_backward_compat_nav_strings_removed(self) -> None:
+        """Sprint 54 (Beta UX recette): nav_home/nav_calendar were never
+        referenced anywhere once nav_dashboard/nav_my_calendar existed —
+        dead duplicate vocabulary, not real backward compatibility."""
+        assert not hasattr(STRINGS, "nav_home")
+        assert not hasattr(STRINGS, "nav_calendar")
+
+    def test_empty_state_titles_never_end_with_a_period(self) -> None:
+        """Sprint 54: EmptyState titles read as short labels, never full
+        sentences — only genuine instructional sentences with a verb
+        (weekend_next_hint/search_empty_query/about_description) keep a
+        trailing period."""
+        for key in (
+            "weekend_empty_title",
+            "dashboard_weekend_championships_empty",
+            "dashboard_next_race_empty",
+            "calendar_season_explorer_empty",
+            "calendar_summary_empty_selection",
+            "search_no_results",
+        ):
+            value = getattr(STRINGS, key)
+            assert not value.endswith("."), f"{key} still ends with a period: {value!r}"
+
+    def test_about_version_carries_a_version_placeholder(self) -> None:
+        """Sprint 54: about_version must be a format string, not a bare
+        'Version Alpha' with no actual number — see views/about.py."""
+        assert "{version}" in STRINGS.about_version
 
 
 class TestPlural:

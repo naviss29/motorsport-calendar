@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import httpx
-import pytest
 from typer.testing import CliRunner
 
 from motorsport_calendar.cli import app
@@ -149,7 +148,9 @@ class TestGenerateF1Errors:
     def test_http_error_exits_with_code_1(self, tmp_path: Path) -> None:
         request = httpx.Request("GET", "https://api.openf1.org/v1/meetings")
         response = httpx.Response(503, request=request)
-        mock = AsyncMock(side_effect=httpx.HTTPStatusError("503", request=request, response=response))
+        mock = AsyncMock(
+            side_effect=httpx.HTTPStatusError("503", request=request, response=response)
+        )
         with patch.object(OpenF1Source, "_get_json", mock):
             result = runner.invoke(app, ["generate-f1", "2024", str(tmp_path / "cal.ics")])
         assert result.exit_code == 1
@@ -158,7 +159,9 @@ class TestGenerateF1Errors:
         output = tmp_path / "cal.ics"
         request = httpx.Request("GET", "https://api.openf1.org/v1/meetings")
         response = httpx.Response(404, request=request)
-        mock = AsyncMock(side_effect=httpx.HTTPStatusError("404", request=request, response=response))
+        mock = AsyncMock(
+            side_effect=httpx.HTTPStatusError("404", request=request, response=response)
+        )
         with patch.object(OpenF1Source, "_get_json", mock):
             runner.invoke(app, ["generate-f1", "2024", str(output)])
         assert not output.exists()
@@ -207,15 +210,17 @@ class TestGenerateF1Refresh:
 
         original_init = OpenF1Source.__init__
 
-        def patched_init(self, client=None, cache=None, *, refresh=False):  # type: ignore[no-untyped-def]
+        def patched_init(self, client=None, cache=None, *, refresh=False):
             captured.append(refresh)
             original_init(self, client=client, cache=cache, refresh=refresh)
 
-        with patch.object(OpenF1Source, "__init__", patched_init):
-            with patch.object(OpenF1Source, "_get_json", mock):
-                runner.invoke(
-                    app, ["generate-f1", "2024", str(tmp_path / "cal.ics"), "--refresh"]
-                )
+        with (
+            patch.object(OpenF1Source, "__init__", patched_init),
+            patch.object(OpenF1Source, "_get_json", mock),
+        ):
+            runner.invoke(
+                app, ["generate-f1", "2024", str(tmp_path / "cal.ics"), "--refresh"]
+            )
 
         assert captured == [True]
 
@@ -225,12 +230,14 @@ class TestGenerateF1Refresh:
 
         original_init = OpenF1Source.__init__
 
-        def patched_init(self, client=None, cache=None, *, refresh=False):  # type: ignore[no-untyped-def]
+        def patched_init(self, client=None, cache=None, *, refresh=False):
             captured.append(refresh)
             original_init(self, client=client, cache=cache, refresh=refresh)
 
-        with patch.object(OpenF1Source, "__init__", patched_init):
-            with patch.object(OpenF1Source, "_get_json", mock):
-                runner.invoke(app, ["generate-f1", "2024", str(tmp_path / "cal.ics")])
+        with (
+            patch.object(OpenF1Source, "__init__", patched_init),
+            patch.object(OpenF1Source, "_get_json", mock),
+        ):
+            runner.invoke(app, ["generate-f1", "2024", str(tmp_path / "cal.ics")])
 
         assert captured == [False]

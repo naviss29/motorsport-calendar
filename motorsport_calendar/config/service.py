@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 import yaml
 
@@ -11,7 +12,9 @@ from motorsport_calendar.config.models import (
     CacheConfig,
     IcsConfig,
     ProvidersConfig,
+    UpdateConfig,
 )
+from motorsport_calendar.utils.paths import user_config_dir
 
 
 class ConfigService:
@@ -19,8 +22,12 @@ class ConfigService:
 
     Recherche ``config.yaml`` dans l'ordre suivant :
     1. Chemin explicite passé au constructeur
-    2. ``config.yaml`` dans le répertoire courant
-    3. ``~/.config/motorsport-calendar/config.yaml``
+    2. ``config.yaml`` dans le répertoire courant (commodité — un fichier
+       optionnel à lire, jamais écrit ; ce n'est pas un problème de
+       packaging que la CLI accepte un override local)
+    3. Répertoire utilisateur multi-plateforme (Sprint 49, ``utils/paths.py``) —
+       ``~/.config/motorsport-calendar/config.yaml`` sur Linux,
+       ``%APPDATA%\\motorsport-calendar\\config.yaml`` sur Windows
 
     Si aucun fichier n'est trouvé, les valeurs par défaut s'appliquent.
     La validation est assurée par Pydantic : un fichier invalide lève une erreur.
@@ -30,9 +37,9 @@ class ConfigService:
                      Quand fourni, aucun autre chemin n'est cherché.
     """
 
-    _DEFAULT_PATHS: list[Path] = [
+    _DEFAULT_PATHS: ClassVar[list[Path]] = [
         Path("config.yaml"),
-        Path("~/.config/motorsport-calendar/config.yaml"),
+        user_config_dir("motorsport-calendar") / "config.yaml",
     ]
 
     def __init__(self, config_path: Path | None = None) -> None:
@@ -49,19 +56,28 @@ class ConfigService:
 
     @property
     def timezone(self) -> str:
+        """Fuseau horaire par défaut de la configuration."""
         return self._config.timezone
 
     @property
     def cache(self) -> CacheConfig:
+        """Sous-section cache de la configuration."""
         return self._config.cache
 
     @property
     def ics(self) -> IcsConfig:
+        """Sous-section export ICS de la configuration."""
         return self._config.ics
 
     @property
     def providers(self) -> ProvidersConfig:
+        """Sous-section providers de la configuration."""
         return self._config.providers
+
+    @property
+    def update(self) -> UpdateConfig:
+        """Sous-section vérification de mise à jour de la configuration."""
+        return self._config.update
 
     # ------------------------------------------------------------------
     # Chargement interne

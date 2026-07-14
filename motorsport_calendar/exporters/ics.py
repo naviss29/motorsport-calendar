@@ -4,8 +4,7 @@ from collections.abc import Iterable
 from datetime import timedelta
 from pathlib import Path
 
-from icalendar import Alarm
-from icalendar import Calendar
+from icalendar import Alarm, Calendar
 from icalendar import Event as ICalEvent
 
 from motorsport_calendar.exporters.base import Exporter

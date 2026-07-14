@@ -442,7 +442,8 @@ class TestSourceConstruction:
         # Test the logic directly without triggering the real HttpCache()/httpx constructor
         from unittest.mock import patch
 
-        with patch("motorsport_calendar.providers.formula1.sources.jolpica.HttpCache") as mock_cache:
+        target = "motorsport_calendar.providers.formula1.sources.jolpica.HttpCache"
+        with patch(target) as mock_cache:
             mock_cache.return_value = object()
             source = JolpicaSource()
             assert source._cache is not None

@@ -107,7 +107,7 @@ class OpenF1Source(Formula1Source, JsonDataSource):
         meetings_raw = await self._get_json("/meetings", {"year": year})
         sessions_raw = await self._get_json("/sessions", {"year": year})
 
-        sessions_by_meeting: dict[int, list[dict]] = {}
+        sessions_by_meeting: dict[int, list[dict[str, Any]]] = {}
         for raw in sessions_raw:
             sessions_by_meeting.setdefault(raw["meeting_key"], []).append(raw)
 
@@ -127,11 +127,11 @@ class OpenF1Source(Formula1Source, JsonDataSource):
     # JsonDataSource interface
     # ------------------------------------------------------------------
 
-    async def fetch_json(self, url: str, params: dict[str, Any]) -> list | dict:
+    async def fetch_json(self, url: str, params: dict[str, Any]) -> list[Any] | dict[str, Any]:
         """Fetch JSON from *url* with *params*, using cache when available."""
         path = url.removeprefix(_BASE_URL)
 
-        async def _do_fetch(_url: str, _params: dict) -> list | dict:
+        async def _do_fetch(_url: str, _params: dict[str, Any]) -> list[Any] | dict[str, Any]:
             response = await self._client.get(path, params=_params)
             response.raise_for_status()
             return response.json()  # type: ignore[no-any-return]
@@ -145,7 +145,7 @@ class OpenF1Source(Formula1Source, JsonDataSource):
     # Internal
     # ------------------------------------------------------------------
 
-    async def _get_json(self, path: str, params: dict[str, Any]) -> list[dict]:
+    async def _get_json(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         """Thin wrapper around fetch_json; kept for backward-compat with existing test mocks."""
         return await self.fetch_json(f"{_BASE_URL}{path}", params)  # type: ignore[return-value]
 
@@ -171,7 +171,7 @@ def _parse_session_type(session_name: str) -> SessionType:
     return _SESSION_TYPE_MAP.get(session_name, SessionType.FREE_PRACTICE)
 
 
-def _build_circuit(meeting: dict) -> Circuit:
+def _build_circuit(meeting: dict[str, Any]) -> Circuit:
     circuit_name: str = meeting["circuit_short_name"]
     return Circuit(
         id=f"openf1-circuit-{meeting['circuit_key']}",
@@ -182,7 +182,7 @@ def _build_circuit(meeting: dict) -> Circuit:
     )
 
 
-def _build_session(raw: dict) -> Session | None:
+def _build_session(raw: dict[str, Any]) -> Session | None:
     """Convert one OpenF1 session dict to a Session, or None if data is incomplete."""
     date_start: str | None = raw.get("date_start")
     date_end: str | None = raw.get("date_end")
@@ -210,8 +210,8 @@ def _build_session(raw: dict) -> Session | None:
 
 def _build_event(
     championship: Championship,
-    meeting: dict,
-    sessions_raw: list[dict],
+    meeting: dict[str, Any],
+    sessions_raw: list[dict[str, Any]],
     round_number: int,
 ) -> Event:
     circuit = _build_circuit(meeting)

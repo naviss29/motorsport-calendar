@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import inspect
 import json
-import time
 from pathlib import Path
+import time
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from motorsport_calendar.cache import HttpCache
+from motorsport_calendar.utils.paths import user_cache_dir
 
 _URL = "https://api.example.com/data"
 _PARAMS: dict = {"year": 2024}
@@ -20,6 +20,24 @@ _DATA_ALT: list = [{"id": 2, "name": "Melbourne"}]
 # ---------------------------------------------------------------------------
 # Initialisation
 # ---------------------------------------------------------------------------
+
+
+class TestHttpCacheDefaultCacheDir:
+    """Sprint 49 — the implicit default (used when a caller constructs
+    ``HttpCache()`` without an explicit ``cache_dir``, e.g. the CLI/GUI's
+    own cache-disabled edge case) must be a user cache directory, never the
+    current working directory. Inspects the *default parameter value*
+    only — never constructs an instance with it, which would create a real
+    directory at the developer/CI machine's actual user cache location."""
+
+    def test_default_is_not_relative_to_cwd(self) -> None:
+        default = inspect.signature(HttpCache.__init__).parameters["cache_dir"].default
+        assert default != Path(".cache")
+        assert default.is_absolute()
+
+    def test_default_matches_user_cache_dir(self) -> None:
+        default = inspect.signature(HttpCache.__init__).parameters["cache_dir"].default
+        assert default == user_cache_dir("motorsport-calendar")
 
 
 class TestHttpCacheInit:
@@ -96,7 +114,8 @@ class TestGetJsonExpiry:
         fetch.return_value = _DATA_ALT
 
         # Simuler un temps futur dépassant le TTL
-        with patch("motorsport_calendar.cache.http_cache.time.time", return_value=time.time() + 86401):
+        target = "motorsport_calendar.cache.http_cache.time.time"
+        with patch(target, return_value=time.time() + 86401):
             result = await cache.get_json(_URL, _PARAMS, fetch)
 
         fetch.assert_called_once()
@@ -109,7 +128,8 @@ class TestGetJsonExpiry:
         fetch.reset_mock()
 
         # Juste avant expiration : le cache doit rester valide
-        with patch("motorsport_calendar.cache.http_cache.time.time", return_value=time.time() + 3599):
+        target = "motorsport_calendar.cache.http_cache.time.time"
+        with patch(target, return_value=time.time() + 3599):
             await cache.get_json(_URL, _PARAMS, fetch)
 
         fetch.assert_not_called()
@@ -127,7 +147,9 @@ class TestGetJsonRefresh:
     async def test_refresh_updates_cache_entry(self, tmp_path: Path) -> None:
         cache = HttpCache(cache_dir=tmp_path)
         await cache.get_json(_URL, _PARAMS, AsyncMock(return_value=_DATA))
-        result = await cache.get_json(_URL, _PARAMS, AsyncMock(return_value=_DATA_ALT), refresh=True)
+        result = await cache.get_json(
+            _URL, _PARAMS, AsyncMock(return_value=_DATA_ALT), refresh=True
+        )
         assert result == _DATA_ALT
         # La prochaine lecture sans refresh doit retourner les nouvelles données
         result2 = await cache.get_json(_URL, _PARAMS, AsyncMock(return_value=[]))

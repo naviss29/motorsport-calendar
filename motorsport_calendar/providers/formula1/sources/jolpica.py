@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -131,7 +131,7 @@ class JolpicaSource(Formula1Source):
         url = f"{_BASE_URL}{path}"
         params: dict[str, int] = {"limit": 100}
 
-        async def _do_fetch(_url: str, _params: dict) -> dict:
+        async def _do_fetch(_url: str, _params: dict[str, Any]) -> dict[str, Any]:
             response = await self._client.get(path, params=_params)
             response.raise_for_status()
             return response.json()  # type: ignore[no-any-return]
@@ -141,7 +141,11 @@ class JolpicaSource(Formula1Source):
         else:
             raw = await _do_fetch(url, params)
 
-        return raw["MRData"]["RaceTable"]["Races"]  # type: ignore[index]
+        # L'API Jolpica renvoie toujours un objet JSON (jamais une liste) pour cet
+        # endpoint — HttpCache.get_json() est générique (list | dict) côté signature.
+        raw = cast(dict[str, Any], raw)
+        races: list[dict[str, Any]] = raw["MRData"]["RaceTable"]["Races"]
+        return races
 
 
 # ---------------------------------------------------------------------------
@@ -161,10 +165,10 @@ def _resolve_timezone(circuit_id: str) -> str:
     return _CIRCUIT_TZ_MAP.get(circuit_id, "UTC")
 
 
-def _build_circuit(race: dict) -> Circuit:
-    circuit_data: dict = race["Circuit"]
+def _build_circuit(race: dict[str, Any]) -> Circuit:
+    circuit_data: dict[str, Any] = race["Circuit"]
     circuit_id: str = circuit_data["circuitId"]
-    location: dict = circuit_data["Location"]
+    location: dict[str, Any] = circuit_data["Location"]
     return Circuit(
         id=f"jolpica-{circuit_id}",
         name=circuit_data["circuitName"],
@@ -204,7 +208,7 @@ def _build_session(
     )
 
 
-def _build_event(championship: Championship, race: dict) -> Event:
+def _build_event(championship: Championship, race: dict[str, Any]) -> Event:
     circuit = _build_circuit(race)
     sessions: list[Session] = []
 

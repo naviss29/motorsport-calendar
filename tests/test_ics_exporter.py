@@ -2,19 +2,17 @@
 
 from pathlib import Path
 
-import pytest
 from icalendar import Calendar
+import pytest
 
 from motorsport_calendar.exporters.ics import IcsExporter
 from motorsport_calendar.models import (
     Championship,
-    ChampionshipCategory,
     Circuit,
     Event,
     Session,
     SessionType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,6 +29,47 @@ def _vevents(cal: Calendar) -> list:
 # ---------------------------------------------------------------------------
 # File generation
 # ---------------------------------------------------------------------------
+
+
+class TestExportIsPackagingSafe:
+    """Sprint 49 — export must work for any user-supplied output path,
+    with zero dependency on the current working directory or the Git
+    repository being present (a packaged executable may run from anywhere,
+    with no repo on disk at all)."""
+
+    def test_export_works_far_from_any_repo_path(
+        self, tmp_path: Path, australian_gp: Event
+    ) -> None:
+        """A path with no relation whatsoever to this project's own
+        directory tree — mirrors where a real packaged app would write."""
+        output = tmp_path / "far" / "away" / "nested" / "calendar.ics"
+        output.parent.mkdir(parents=True)
+        IcsExporter().export([australian_gp], output)
+        assert output.exists()
+        assert output.stat().st_size > 0
+
+    def test_export_does_not_read_or_write_relative_to_cwd(
+        self, tmp_path: Path, australian_gp: Event, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Launching the app from an arbitrary directory (e.g. a packaged
+        executable's own install folder) must not affect where an
+        absolute, user-supplied output path resolves to."""
+        other_cwd = tmp_path / "not_the_output_dir"
+        other_cwd.mkdir()
+        monkeypatch.chdir(other_cwd)
+
+        output = tmp_path / "elsewhere" / "calendar.ics"
+        output.parent.mkdir()
+        IcsExporter().export([australian_gp], output)
+
+        assert output.exists()
+        assert list(other_cwd.iterdir()) == []  # nothing written into the CWD
+
+    def test_export_accepts_an_absolute_path(self, tmp_path: Path, australian_gp: Event) -> None:
+        output = (tmp_path / "calendar.ics").resolve()
+        assert output.is_absolute()
+        IcsExporter().export([australian_gp], output)
+        assert output.exists()
 
 
 class TestExportFile:

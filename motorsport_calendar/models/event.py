@@ -31,6 +31,9 @@ class Event(BaseModel):
     sessions: tuple[Session, ...] = ()
     event_uid: str = Field(
         min_length=1,
-        description="Stable unique identifier used as UID in ICS exports (e.g. 'f1-2025-01-aus@motorsport-calendar')",
+        description=(
+            "Stable unique identifier used as UID in ICS exports "
+            "(e.g. 'f1-2025-01-aus@motorsport-calendar')"
+        ),
     )
     status: EventStatus = EventStatus.SCHEDULED

@@ -12,8 +12,11 @@ from datetime import UTC, datetime, timedelta
 
 from motorsport_calendar.gui.event_display import (
     EventDisplayData,
+    circuit_display_name,
     country_label,
     normalize_event_display,
+    normalize_key,
+    resolve_country,
 )
 from motorsport_calendar.models import (
     Championship,
@@ -71,6 +74,7 @@ class TestRealF1Fixture:
             grand_prix_name="Belgian Grand Prix",
             circuit_name="Spa-Francorchamps",
             country="🇧🇪 Belgique",
+            circuit_key="spafrancorchamps",
         )
 
 
@@ -250,6 +254,95 @@ class TestEventDisplayDataIsFrozen:
     def test_cannot_mutate_after_construction(self) -> None:
         import pytest
 
-        data = EventDisplayData(grand_prix_name="x", circuit_name=None, country=None)
+        data = EventDisplayData(
+            grand_prix_name="x", circuit_name=None, country=None, circuit_key=None
+        )
         with pytest.raises(AttributeError):
             data.grand_prix_name = "y"  # type: ignore[misc]
+
+
+class TestNormalizeKey:
+    """Promoted to public at Sprint 47 (moved from search_service.py's own
+    private ``_normalize``) — the shared "compact identity key" used by
+    both search matching (Sprint 45) and circuit deduplication
+    (Sprint 47)."""
+
+    def test_case_insensitive(self) -> None:
+        assert normalize_key("Spa") == normalize_key("SPA") == normalize_key("spa")
+
+    def test_accent_insensitive(self) -> None:
+        assert normalize_key("Le Mans") == normalize_key("Le Mãns")
+
+    def test_separator_insensitive(self) -> None:
+        assert normalize_key("Spa-Francorchamps") == normalize_key("spa francorchamps")
+
+    def test_different_names_produce_different_keys(self) -> None:
+        assert normalize_key("Spa") != normalize_key("Spa-Francorchamps")
+
+
+class TestResolveCountry:
+    """Promoted to public at Sprint 47 (renamed from ``_resolve_country``)
+    — same "never show Unknown" rule reused for circuit identity."""
+
+    def test_known_country_resolves_to_its_label(self) -> None:
+        assert resolve_country("Belgium") == "🇧🇪 Belgique"
+
+    def test_unknown_sentinel_hides_the_line(self) -> None:
+        assert resolve_country("Unknown") is None
+
+    def test_blank_hides_the_line(self) -> None:
+        assert resolve_country("") is None
+
+
+class TestCircuitDisplayName:
+    """New at Sprint 47 — a circuit's own name, independent of any single
+    event's headline (unlike ``_resolve_circuit_name``, which hides a
+    value that would be redundant with one specific card)."""
+
+    def _circuit(self, *, name: str = "", city: str = "") -> Circuit:
+        return Circuit(id="c", name=name, city=city, country="France", timezone="UTC")
+
+    def test_prefers_circuit_name(self) -> None:
+        circuit = self._circuit(name="Spa-Francorchamps", city="Spa")
+        assert circuit_display_name(circuit) == "Spa-Francorchamps"
+
+    def test_falls_back_to_city_when_name_is_blank(self) -> None:
+        circuit = self._circuit(name="", city="Spa-Francorchamps")
+        assert circuit_display_name(circuit) == "Spa-Francorchamps"
+
+    def test_never_hides_a_value_for_being_redundant(self) -> None:
+        """Unlike _resolve_circuit_name — this is the circuit's own name,
+        not a decision about whether to show a line under a headline."""
+        circuit = self._circuit(name="Belgian", city="Belgian")
+        assert circuit_display_name(circuit) == "Belgian"
+
+    def test_falls_back_to_a_generic_label_when_both_are_blank(self) -> None:
+        circuit = self._circuit(name="", city="")
+        assert circuit_display_name(circuit) == "Circuit inconnu"
+
+
+class TestEventDisplayDataCircuitKey:
+    """``circuit_key`` (Sprint 47) is in lockstep with ``circuit_name`` —
+    ``None`` exactly when the circuit line itself is hidden."""
+
+    def test_circuit_key_set_when_circuit_name_is_shown(self) -> None:
+        event = _event(
+            name="Belgian Grand Prix",
+            circuit_name="Spa-Francorchamps",
+            circuit_city="Spa-Francorchamps",
+            country="Belgium",
+        )
+        display = normalize_event_display("formula1", event)
+        assert display.circuit_name == "Spa-Francorchamps"
+        assert display.circuit_key == "spafrancorchamps"
+
+    def test_circuit_key_is_none_when_circuit_name_is_hidden(self) -> None:
+        event = _event(
+            name="Belgian",
+            circuit_name="Belgian",
+            circuit_city="Belgian",
+            country="Belgium",
+        )
+        display = normalize_event_display("formula2", event)
+        assert display.circuit_name is None
+        assert display.circuit_key is None

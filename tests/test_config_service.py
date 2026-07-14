@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import ValidationError
 import pytest
 
 from motorsport_calendar.config import (
@@ -13,8 +14,9 @@ from motorsport_calendar.config import (
     IcsConfig,
     ProviderConfig,
     ProvidersConfig,
+    UpdateConfig,
 )
-
+from motorsport_calendar.utils.paths import user_cache_dir, user_config_dir
 
 # ---------------------------------------------------------------------------
 # Modèles — valeurs par défaut
@@ -35,6 +37,11 @@ class TestAppConfigDefaults:
         path = str(AppConfig().cache.path)
         assert ".cache" in path and "motorsport-calendar" in path
 
+    def test_default_cache_path_matches_user_cache_dir(self) -> None:
+        """Sprint 49 — the default must be the platform user cache
+        directory (utils/paths.py), never the current working directory."""
+        assert AppConfig().cache.path == user_cache_dir("motorsport-calendar")
+
     def test_default_ics_alarm_minutes(self) -> None:
         assert AppConfig().ics.alarm_minutes == 30
 
@@ -43,6 +50,12 @@ class TestAppConfigDefaults:
 
     def test_default_wec_source_is_official(self) -> None:
         assert AppConfig().providers.wec.source == "official"
+
+    def test_default_update_manifest_url_is_empty(self) -> None:
+        """Sprint 51 — no host is ever hardcoded (no GitHub, no anything);
+        an empty default means the update check is a silent no-op until a
+        real URL is set in config.yaml."""
+        assert AppConfig().update.manifest_url == ""
 
 
 class TestCacheConfigProperties:
@@ -67,14 +80,14 @@ class TestCacheConfigProperties:
 
 class TestCacheConfigValidation:
     def test_ttl_hours_minimum_is_1(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             CacheConfig(ttl_hours=0)
 
     def test_alarm_minutes_minimum_is_0(self) -> None:
         IcsConfig(alarm_minutes=0)  # doit passer sans exception
 
     def test_alarm_minutes_negative_raises(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             IcsConfig(alarm_minutes=-1)
 
 
@@ -115,9 +128,40 @@ class TestProvidersConfigDefaults:
         assert pc.enabled is False
 
 
+class TestUpdateConfig:
+    def test_default_manifest_url_is_empty(self) -> None:
+        assert UpdateConfig().manifest_url == ""
+
+    def test_manifest_url_accepts_any_host(self) -> None:
+        """Sprint 51 — no validation ties this to a specific platform;
+        any absolute URL is accepted as-is."""
+        config = UpdateConfig(manifest_url="https://updates.example.org/latest.json")
+        assert config.manifest_url == "https://updates.example.org/latest.json"
+
+    def test_is_frozen(self) -> None:
+        config = UpdateConfig()
+        with pytest.raises(ValidationError):
+            config.manifest_url = "https://changed.test"
+
+
 # ---------------------------------------------------------------------------
 # ConfigService — pas de fichier
 # ---------------------------------------------------------------------------
+
+
+class TestConfigServiceDefaultPaths:
+    """Sprint 49 — the user-level config.yaml lookup path must be the
+    platform user config directory, never a hardcoded Linux-only path."""
+
+    def test_second_default_path_is_user_config_dir(self) -> None:
+        expected = user_config_dir("motorsport-calendar") / "config.yaml"
+        assert ConfigService._DEFAULT_PATHS[1] == expected
+
+    def test_first_default_path_is_still_cwd_relative(self) -> None:
+        """The CWD-relative ``config.yaml`` lookup is an intentional,
+        read-only convenience (project-local override) — not a packaging
+        bug, left unchanged."""
+        assert ConfigService._DEFAULT_PATHS[0] == Path("config.yaml")
 
 
 class TestConfigServiceNoFile:
@@ -136,6 +180,10 @@ class TestConfigServiceNoFile:
     def test_alarm_minutes_30_by_default(self, tmp_path: Path) -> None:
         svc = ConfigService(config_path=tmp_path / "nonexistent.yaml")
         assert svc.ics.alarm_minutes == 30
+
+    def test_update_manifest_url_empty_by_default(self, tmp_path: Path) -> None:
+        svc = ConfigService(config_path=tmp_path / "nonexistent.yaml")
+        assert svc.update.manifest_url == ""
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +237,15 @@ class TestConfigServiceYaml:
         )
         svc = ConfigService(config_path=cfg)
         assert svc.providers.wec.source == "custom"
+
+    def test_reads_update_manifest_url(self, tmp_path: Path) -> None:
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(
+            "update:\n  manifest_url: https://example.test/manifest.json\n",
+            encoding="utf-8",
+        )
+        svc = ConfigService(config_path=cfg)
+        assert svc.update.manifest_url == "https://example.test/manifest.json"
 
     def test_reads_full_config(self, tmp_path: Path) -> None:
         cfg = tmp_path / "config.yaml"

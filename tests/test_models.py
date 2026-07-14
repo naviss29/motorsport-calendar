@@ -1,9 +1,9 @@
 """Tests for Pydantic models."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from motorsport_calendar.models import (
     Championship,
@@ -15,7 +15,7 @@ from motorsport_calendar.models import (
     SessionType,
 )
 
-TZ = timezone.utc
+TZ = UTC
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class TestChampionship:
 
     def test_immutable(self, f1: Championship) -> None:
         with pytest.raises(ValidationError):
-            f1.name = "Changed"  # type: ignore[misc]
+            f1.name = "Changed"
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +80,7 @@ class TestCircuit:
 
     def test_immutable(self, albert_park: Circuit) -> None:
         with pytest.raises(ValidationError):
-            albert_park.name = "Changed"  # type: ignore[misc]
+            albert_park.name = "Changed"
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ class TestSession:
 
     def test_immutable(self, race_session: Session) -> None:
         with pytest.raises(ValidationError):
-            race_session.title = "Changed"  # type: ignore[misc]
+            race_session.title = "Changed"
 
 
 # ---------------------------------------------------------------------------
@@ -270,4 +270,4 @@ class TestEvent:
 
     def test_immutable(self, australian_gp: Event) -> None:
         with pytest.raises(ValidationError):
-            australian_gp.name = "Changed"  # type: ignore[misc]
+            australian_gp.name = "Changed"

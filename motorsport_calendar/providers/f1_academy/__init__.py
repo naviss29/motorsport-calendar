@@ -8,7 +8,7 @@ from .source import F1AcademySource
 __all__ = ["F1AcademyProvider", "F1AcademySource"]
 
 
-def _make_provider(source):  # type: ignore[no-untyped-def]
+def _make_provider(source: F1AcademySource) -> F1AcademyProvider:
     """Factory F1 Academy : enveloppe une source dans un F1AcademyProvider."""
     return F1AcademyProvider(source)
 

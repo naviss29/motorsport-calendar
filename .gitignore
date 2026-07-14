@@ -43,6 +43,10 @@ dmypy.json
 *.tar.gz
 *.whl
 
+# Release staging (Sprint 58 — docs/RELEASE.md) — regenerated per release,
+# never tracked, same reasoning as build/
+Release/
+
 # Cache HTTP local
 .cache/
 
