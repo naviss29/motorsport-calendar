@@ -196,7 +196,7 @@ class Strings:
     # Alpha" with no number at all, the one place in the app that talked
     # about "the version" without saying which one.
     about_version: str = "Version {version} — Alpha"
-    about_developer: str = "Développé par BApps"
+    about_developer: str = "Développé par BApps Studio"
     about_github_label: str = "Voir sur GitHub"
     about_license: str = "Licence MIT"
     about_description: str = (
