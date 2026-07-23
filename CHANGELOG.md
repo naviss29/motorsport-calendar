@@ -7,9 +7,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint RC-01 — Validation Windows
+## [0.3.0] — 2026-07-23
 
-### Fixed
+Consolidation de tous les sprints jamais publiés depuis `[0.2.0]` (CLI multi-provider
+uniquement, avant l'application desktop) : l'intégralité de l'app GUI Flet, 12
+championnats supplémentaires, favoris, recherche, notifications, tableau de bord,
+préférences, et le packaging desktop Linux/Windows. Chaque sprint est conservé
+ci-dessous tel quel (aucun contenu résumé ni supprimé), simplement regroupé sous une
+unique version au lieu de dizaines d'entrées `[Unreleased]` distinctes jamais taguées.
+
+### Sprint RC-01 — Validation Windows
+
+#### Fixed
 
 - **Le build Windows (`flet build windows motorsport_calendar/gui
   --module-name app`) est désormais vérifié pour de vrai sur une
@@ -32,7 +41,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   première pour ce projet. Les 8 pages de l'app desktop parcourues avec
   captures d'écran réelles, aucun crash, aucun widget cassé.
 
-### Notes
+#### Notes
 
 - Correctif uniquement packaging/tests — aucune nouvelle fonctionnalité,
   aucun refactoring non indispensable (phase Release Candidate : gel
@@ -48,9 +57,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 59 — Correction du packaging Flet
+### Sprint 59 — Correction du packaging Flet
 
-### Fixed
+#### Fixed
 
 - **Le build Linux (`flet build linux motorsport_calendar/gui
   --module-name app`) produit désormais un exécutable qui démarre
@@ -77,7 +86,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     deux fois, aucune trace d'erreur — pas seulement une compilation
     réussie.
 
-### Notes
+#### Notes
 
 - Correctif uniquement packaging/release — **aucune modification
   métier**, la `pyproject.toml` racine et les points d'entrée de
@@ -93,9 +102,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 58 — Validation Packaging Beta
+### Sprint 58 — Validation Packaging Beta
 
-### Added
+#### Added
 
 - **`docs/RELEASE.md`** (nouveau) — procédure de release pas-à-pas :
   générer le build Linux, générer le build Windows, assembler le dossier
@@ -104,7 +113,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   locale régénérée à chaque release, jamais versionnée (même logique que
   `build/`).
 
-### Documentation
+#### Documentation
 
 - **`docs/PACKAGING.md` — audit complet du build Linux réellement compilé
   et exécuté pour la première fois** (Sprint 49 n'avait jamais dépassé
@@ -131,7 +140,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     correct de bout en bout") — jamais réellement vérifié à l'époque,
     le build n'avait alors jamais tourné jusqu'au bout.
 
-### Notes
+#### Notes
 
 - Audit et documentation uniquement — **aucune modification métier**,
   aucune évolution des services, suite de tests intacte (2033 passants +
@@ -143,9 +152,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 57 — Préparation Beta : Nettoyage & Positionnement
+### Sprint 57 — Préparation Beta : Nettoyage & Positionnement
 
-### Added
+#### Added
 
 - **Nouvelle page "Soutenir le projet"** (`gui/views/support.py`) — le
   point de contact entre Motorsport Calendar et sa communauté, purement
@@ -172,7 +181,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   privé une fois "Soutenir le projet" ayant besoin de la même forme
   pour ses emplacements PayPal/GitHub Sponsors.
 
-### Changed
+#### Changed
 
 - **"À propos" devient une véritable présentation du projet** — conserve
   la version réelle/licence/lien GitHub déjà existants (Sprints 26-54),
@@ -186,7 +195,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `ProviderRegistry`, `cli.py generate-imsa`/`generate-worldsbk`
   inchangés.
 
-### Notes
+#### Notes
 
 - Aucun nouveau provider, aucune évolution métier, aucune évolution des
   services, aucun système de vote/dons local.
@@ -204,9 +213,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 56 — Notifications natives
+### Sprint 56 — Notifications natives
 
-### Added
+#### Added
 
 - **`gui/system_notifications.py`** (nouveau) — la seule couche
   dépendante du système d'exploitation de toute l'application.
@@ -240,7 +249,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (changement d'année), même déclencheur que les index recherche/
   circuits.
 
-### Notes
+#### Notes
 
 - Aucun nouveau provider, aucune évolution métier, aucune nouvelle
   dépendance, aucun nouveau réglage de préférence.
@@ -254,9 +263,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 55 — Recherche interactive
+### Sprint 55 — Recherche interactive
 
-### Added
+#### Added
 
 - **Les résultats de "Recherche" deviennent cliquables** — selon leur
   nature, réutilisant intégralement les vues déjà existantes, sans
@@ -284,7 +293,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `on_circuit_click`), chacun appelé avec le `SearchResultItem` cliqué ;
   la vue ne résout toujours rien elle-même, elle relaie uniquement.
 
-### Notes
+#### Notes
 
 - Aucun nouveau service, aucun nouveau provider, aucune nouvelle
   logique métier — uniquement `SearchService`, `EventDetails`,
@@ -297,9 +306,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 54 — Préparation Beta (Recette UX)
+### Sprint 54 — Préparation Beta (Recette UX)
 
-### Changed
+#### Changed
 
 - **Cohérence des icônes** — trois incohérences visuelles corrigées, sans
   toucher au Design System ni à la logique :
@@ -338,7 +347,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   compatibilité" mais jamais référencées nulle part depuis l'introduction
   de `nav_dashboard`/`nav_my_calendar`, supprimées.
 
-### Notes
+#### Notes
 
 - Aucune nouvelle fonctionnalité, aucun nouveau provider, aucune
   évolution des services/providers/modèles métier — recette UX pure,
@@ -354,9 +363,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 53 — Nouveautés & Centre d'accueil
+### Sprint 53 — Nouveautés & Centre d'accueil
 
-### Added
+#### Added
 
 - **Dashboard transformé en véritable page d'accueil** — 3 nouvelles
   sections ajoutées à la page existante (stats saison, "Ce week-end",
@@ -397,7 +406,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (`asyncio.gather`), résout `active_championships` via
   `registry.enabled(config.providers)`.
 
-### Notes
+#### Notes
 
 - Aucun nouveau service, aucun nouveau provider, aucune nouvelle
   dépendance, aucune évolution des modèles métier.
@@ -408,9 +417,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 52 — Préférences avancées
+### Sprint 52 — Préférences avancées
 
-### Added
+#### Added
 
 - **Page Préférences transformée en véritable centre de configuration** —
   4 sections : Notifications, Mises à jour, Calendrier, Application. Plus
@@ -442,7 +451,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   décode la préférence `default_year` en année réelle ; ne plante jamais
   sur une valeur corrompue (repli sur l'année courante).
 
-### Changed
+#### Changed
 
 - **`gui/models.py::PreferencesModel`** repensé — les 6 champs
   décoratifs hérités (Sprints 23-31, jamais reliés à rien de réel :
@@ -457,7 +466,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `config.ics.alarm_minutes` si jamais enregistrée) au lieu de lire
   uniquement `config.yaml`.
 
-### Notes
+#### Notes
 
 - Aucun nouveau provider, aucune nouvelle page, aucune évolution
   graphique (Design System/Layout System/Components strictement
@@ -467,9 +476,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 51 — Vérification des mises à jour
+### Sprint 51 — Vérification des mises à jour
 
-### Added
+#### Added
 
 - **`gui/update_service.py`** (nouveau) — `UpdateService`, totalement
   indépendant de Flet (aucun `import flet`, vérifié par un test dédié) :
@@ -510,7 +519,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   manifeste invalide/incomplet, absence de réseau, timeout, erreurs HTTP,
   JSON malformé, préférence désactivée, aucune URL configurée.
 
-### Notes
+#### Notes
 
 - Aucun provider, aucune évolution de providers existants.
 - Aucun changement de comportement pour les fonctionnalités existantes —
@@ -519,14 +528,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased] — Sprint 50 — Audit & Consolidation
+### Sprint 50 — Audit & Consolidation
 
 Sprint non-fonctionnel : aucune fonctionnalité, aucun provider, aucune
 page, aucun changement de comportement utilisateur. Audit complet du
 projet + réduction de dette technique. Rapport complet :
 `docs/AUDIT.md`.
 
-### Fixed
+#### Fixed
 
 - **Bug réel dans `core/service.py::CalendarService.export_championship`**
   (jamais appelée par aucun code réel, détecté par mypy lors du scan
@@ -535,7 +544,7 @@ projet + réduction de dette technique. Rapport complet :
   événements via `provider.fetch_events` avant export. Zéro impact
   utilisateur (classe jamais exercée par le CLI ni la GUI).
 
-### Changed
+#### Changed
 
 - **Dette Ruff : 149 → 0 erreur** — imports non triés/inutilisés, `noqa`
   obsolètes, `datetime.timezone.utc` → `datetime.UTC`, `lambda` assignées
@@ -575,7 +584,7 @@ projet + réduction de dette technique. Rapport complet :
   déjà documentée sur son ABC (76 cas, volontairement non dupliqués,
   convention Python standard).
 
-### Performance
+#### Performance
 
 - **Fetch concurrent des providers** dans `cli.py::generate` et
   `gui/controller.py::generate_calendar` — chaque championnat interroge
@@ -588,14 +597,14 @@ projet + réduction de dette technique. Rapport complet :
   l'ancienne implémentation séquentielle avant validation contre la
   nouvelle.
 
-### Added
+#### Added
 
 - **`docs/AUDIT.md`** (nouveau) — rapport d'audit complet : état général,
   points forts/faibles, dette restante documentée, 10 fichiers les plus
   volumineux, services les plus critiques, optimisations
   réalisées/reportées, recommandations pour les prochains sprints.
 
-### Notes
+#### Notes
 
 - **1863 → 1865 tests** (+2, tests de non-régression performance),
   couverture inchangée (~97 %), 0 régression.
@@ -604,9 +613,9 @@ projet + réduction de dette technique. Rapport complet :
 
 ---
 
-## [Unreleased] — Sprint 49 — Packaging Alpha
+### Sprint 49 — Packaging Alpha
 
-### Added
+#### Added
 
 - **`motorsport_calendar/utils/paths.py`** (nouveau) — `user_config_dir()`/`user_cache_dir()`,
   répertoires utilisateur multi-plateforme (Linux : XDG Base Directory ; Windows :
@@ -622,7 +631,7 @@ projet + réduction de dette technique. Rapport complet :
   direct, Windows documenté précisément mais non exécuté faute de machine Windows),
   structure générée, assets embarqués, limitations.
 
-### Fixed
+#### Fixed
 
 - **Cache HTTP jamais dans le dépôt Git** — `HttpCache`'s repli implicite (`Path(".cache")`,
   relatif au répertoire courant) devient le répertoire cache utilisateur
@@ -640,7 +649,7 @@ projet + réduction de dette technique. Rapport complet :
   l'appelant, aucune dépendance au dépôt) — non modifié, validé par de nouveaux tests
   explicites.
 
-### Notes
+#### Notes
 
 - Build Linux validé en direct : `flet build linux motorsport_calendar/gui --module-name
   app` résout correctement l'entrée/les assets, installe le SDK Flutter et atteint
@@ -653,9 +662,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 49. ADR-040 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 48 — Finalisation des providers
+### Sprint 48 — Finalisation des providers
 
-### Added
+#### Added
 
 - **`OfficialWecSource` devient une implémentation réelle** — FIA WEC rejoint ELMS/MLMC :
   fiawec.com utilise exactement le même CMS/JSON-LD schema.org (confirmé en direct),
@@ -676,7 +685,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 49. ADR-040 dans `docs/DECIS
   JSON-LD de fiawec.com (code ISO 3166-1 alpha-3), plutôt qu'une table statique par
   circuit — même principe déjà appliqué à GT World Challenge (Sprint 37).
 
-### Investigated (no viable source found — stubs unchanged)
+#### Investigated (no viable source found — stubs unchanged)
 
 - **IMSA WeatherTech** — ré-investigué : imsa.com bloque désormais jusqu'à son propre
   `robots.txt` (Cloudflare, plus strict qu'au Sprint 36), le portail Al Kamel reste une
@@ -687,7 +696,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 49. ADR-040 dans `docs/DECIS
   d'endpoint événements exploitable sans automatisation navigateur. Aucune source
   exploitable trouvée.
 
-### Fixed
+#### Fixed
 
 - 37 nouveaux tests au total, zéro régression — dont l'adaptation de plusieurs tests qui
   s'appuyaient implicitement sur l'échec naturel (`NotImplementedError`) de WEC (CLI
@@ -699,9 +708,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 48. ADR-039 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 47 — Circuit Explorer
+### Sprint 47 — Circuit Explorer
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/circuit_service.py`** — nouveau `CircuitService`, une
   véritable base de données des circuits construite uniquement à partir des événements
@@ -729,9 +738,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 47. ADR-038 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 46 — Moteur de notifications
+### Sprint 46 — Moteur de notifications
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/notification_service.py`** — nouveau `NotificationService`,
   fondations d'un moteur de notifications entièrement indépendant de l'interface (aucune
@@ -764,9 +773,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 46. ADR-037 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 45 — Recherche globale
+### Sprint 45 — Recherche globale
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/search_service.py`** — nouveau `SearchService`, recherche
   instantanée et entièrement hors-ligne (aucun appel réseau supplémentaire) sur les
@@ -798,9 +807,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 45. ADR-036 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 44 — Favoris intelligents
+### Sprint 44 — Favoris intelligents
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/favorites_service.py`** — nouveau `FavoritesService`,
   source de vérité unique pour les championnats favoris (`list`/`is_favorite`/`add`/
@@ -838,9 +847,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 44. ADR-035 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 43 — Refonte UX de "Mon calendrier"
+### Sprint 43 — Refonte UX de "Mon calendrier"
 
-### Changed
+#### Changed
 
 - **"Mon calendrier" abandonne son assistant 4 étapes (Sprint 26) pour une page unique
   réorganisée** — objectif purement ergonomique, aucune nouvelle fonctionnalité métier,
@@ -877,9 +886,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 43. ADR-034 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 42 — Fiche événement
+### Sprint 42 — Fiche événement
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/event_details.py`** — nouveau module de logique pure (sans
   Flet, sans I/O, entièrement testable avec de simples fixtures `Event`/`Session`) qui
@@ -900,9 +909,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 42. ADR-033 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 41 — Explorer une saison
+### Sprint 41 — Explorer une saison
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/season_explorer.py`** — nouveau module de logique pure (sans
   Flet, sans I/O, entièrement testable avec de simples fixtures `Event`/`Session`) qui
@@ -925,9 +934,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 41. ADR-032 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 40 — Calendrier interactif
+### Sprint 40 — Calendrier interactif
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/calendar_selection.py`** — nouveau module de logique pure
   (sans Flet, sans I/O, entièrement testable avec de simples fixtures `Event`/`Session`)
@@ -953,9 +962,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 40. ADR-031 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 39 — Dashboard Motorsport
+### Sprint 39 — Dashboard Motorsport
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/dashboard.py`** — nouveau module de logique pure (sans Flet,
   entièrement testable avec de simples fixtures `Event`/`Session`) agrégeant les
@@ -986,9 +995,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 39. ADR-030 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 38 — Motorcycle Racing (MotoGP, Moto2, Moto3, WorldSBK)
+### Sprint 38 — Motorcycle Racing (MotoGP, Moto2, Moto3, WorldSBK)
 
-### Added
+#### Added
 
 - **`motorsport_calendar/providers/motogp_series/`** — nouvelle abstraction partagée
   `PulseliveGpSource`, découverte en cours de sprint (pas anticipée) : MotoGP, Moto2 et
@@ -1011,7 +1020,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 39. ADR-030 dans `docs/DECIS
 - 166 nouveaux tests, dont une fixture réelle non retouchée
   (`tests/fixtures/real/motogp_events_2026.json`) extraite de l'API en direct.
 
-### Investigated — no viable data source found for WorldSBK
+#### Investigated — no viable data source found for WorldSBK
 
 - **Aucune API publique documentée** pour WorldSBK.
 - Le site worldsbk.com tourne bien sur la même famille de plateforme que MotoGP ("Pulse
@@ -1023,7 +1032,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 39. ADR-030 dans `docs/DECIS
 - L'API MotoGP elle-même ne couvre pas WorldSBK (ses `timing_ids` n'exposent jamais de
   business unit SBK, confirmant une plateforme réellement distincte).
 
-### Fixed
+#### Fixed
 
 - **`PulseliveGpSource._parse_datetime`** normalise désormais chaque horodatage vers UTC
   (l'API renvoie l'heure locale du circuit avec son propre décalage, ex. `+07:00`) — sans
@@ -1035,9 +1044,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 38. ADR-029 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 37 — GT Racing (GT World Challenge Europe/America/Asia, IGTC)
+### Sprint 37 — GT Racing (GT World Challenge Europe/America/Asia, IGTC)
 
-### Added
+#### Added
 
 - **`motorsport_calendar/providers/sro_series/`** — nouvelle abstraction partagée
   `SroTimetableSource`, découverte en cours de sprint (pas anticipée) : GT World Challenge
@@ -1059,7 +1068,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 38. ADR-029 dans `docs/DECIS
   (`tests/fixtures/real/`) extraites des quatre sites en direct (calendrier + une page
   course par site).
 
-### Notable design decisions
+#### Notable design decisions
 
 - Format double manche "Sprint Cup" (GT World Challenge Europe/Asia — deux Qualifying et
   deux Race par week-end) détecté dynamiquement par comptage des sessions "Race" plutôt que
@@ -1080,9 +1089,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 37. ADR-028 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 36 — Extension IMSA (sortie de l'écosystème ACO)
+### Sprint 36 — Extension IMSA (sortie de l'écosystème ACO)
 
-### Added
+#### Added
 
 - **`motorsport_calendar/providers/imsa/`** — nouveau provider dédié à l'IMSA WeatherTech
   SportsCar Championship, premier championnat de l'application organisé par une entité
@@ -1096,7 +1105,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 37. ADR-028 dans `docs/DECIS
 - 39 nouveaux tests (`tests/test_imsa_provider.py`, `tests/test_cli_generate_imsa.py`),
   mirroring exact des suites WEC. Zéro régression sur les 1150 tests existants.
 
-### Investigated — no viable data source found
+#### Investigated — no viable data source found
 
 - **Aucune API publique documentée** pour IMSA.
 - **imsa.com est bloqué au niveau infrastructure** (Cloudflare, HTTP 403 avec
@@ -1115,7 +1124,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 37. ADR-028 dans `docs/DECIS
   des articles individuels — pas de données structurées, non fiable à parser
   systématiquement sur ~11 rounds.
 
-### Decision
+#### Decision
 
 - Provider IMSA enregistré et intégré partout, avec une source officielle stub
   (`OfficialImsaSource.get_season` lève `NotImplementedError`) — exactement le même
@@ -1126,9 +1135,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 36.
 
 ---
 
-## [Unreleased] — Sprint 35 — Extension Endurance (ELMS, Michelin Le Mans Cup)
+### Sprint 35 — Extension Endurance (ELMS, Michelin Le Mans Cup)
 
-### Added
+#### Added
 
 - **`motorsport_calendar/providers/aco_series/`** — nouvelle abstraction partagée
   `AcoSportsEventSource`, découverte en cours de sprint (pas anticipée) : WEC, ELMS et
@@ -1149,7 +1158,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 36.
   extraites des deux sites en direct.
 - `beautifulsoup4`/`lxml` ajoutés aux dépendances (parsing HTML/JSON-LD).
 
-### Fixed
+#### Fixed
 
 - **`AcoSportsEventSource.fetch_html`** rendu transparent au cache (même contrat que
   `F1CalendarBaseSource.fetch_json`) après qu'un test d'intégration ait révélé qu'un
@@ -1160,9 +1169,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 35. ADR-026 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 34 — Extension Formula (Formula E)
+### Sprint 34 — Extension Formula (Formula E)
 
-### Added
+#### Added
 
 - **`motorsport_calendar/providers/formula_e/`** — nouveau championnat, intégré selon le
   même patron que F1 Academy : `FormulaEProvider`/`FormulaESource` (ABC) +
@@ -1178,7 +1187,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 35. ADR-026 dans `docs/DECIS
   `display_names.py` et `upcoming_weekend.py::WEEKEND_CHAMPIONSHIP_IDS`.
 - 46 nouveaux tests (provider, source réelle, CLI, fixture réelle du dataset).
 
-### Changed
+#### Changed
 
 - **`motorsport_calendar/cli.py`** — les 5 commandes `generate-f1/f2/f3/f1-academy/wec`
   (copier-coller quasi identique depuis leur création) factorisées vers un helper partagé
@@ -1190,9 +1199,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 25 — Release Alpha Phase 1 — Navigation Architecture
+### Sprint 25 — Release Alpha Phase 1 — Navigation Architecture
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/views/`** — package de vues indépendantes (une par destination).
   Chaque module expose une fonction `build_*_view()` qui retourne un `ft.Control`.
@@ -1213,7 +1222,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   (empty_title, coming_soon, section_*) + favorites + prefs (6 rubriques + coming_soon).
 - **44 nouveaux tests** : `test_gui_preferences_model.py` (22) + `test_gui_views.py` (22).
 
-### Changed
+#### Changed
 
 - **Navigation** : 3 destinations → 5 destinations : 🏁 Ce week-end / 📅 Mon calendrier /
   ⭐ Mes favoris / ⚙ Préférences / ℹ À propos. "Accueil" supprimé.
@@ -1221,15 +1230,15 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   services, état partagé, handlers). Les layouts sont délégués aux modules `views/`.
 - **Flet 0.85 fixes bonus** : `ft.border.all()` → `ft.Border.all()` (module ≠ classe).
 
-### Tests
+#### Tests
 
 - 44 nouveaux tests. Total : **764 tests** — couverture 94 %.
 
 ---
 
-## [Unreleased] — Sprint 24 — Desktop Alpha 3 — Product Polish
+### Sprint 24 — Desktop Alpha 3 — Product Polish
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/categories.py`** — modèle de données pour les groupes visuels
   de championnats. `Category` (StrEnum : FORMULA, ENDURANCE, MOTO, RALLY, AMERICA),
@@ -1246,7 +1255,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   `about_github_label`, `about_license`, `about_description`.
 - **25 nouveaux tests** : `test_gui_categories.py`.
 
-### Changed
+#### Changed
 
 - **Championnats groupés visuellement** : dans l'écran Calendrier, les cases à cocher sont
   regroupées sous des en-têtes `🏎 Formula` et `🏁 Endurance` (avec séparateur entre groupes).
@@ -1257,15 +1266,15 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   unique. `page.padding = 0` (padding géré par chaque vue).
 - **`UrlLauncher`** et `FilePicker` inscrits dans `page.services` (tous deux Services Flet).
 
-### Tests
+#### Tests
 
 - 25 nouveaux tests : `test_gui_categories.py`. Total : **720 tests**.
 
 ---
 
-## [Unreleased] — Sprint 23 — Desktop Alpha 2 — UX Polish
+### Sprint 23 — Desktop Alpha 2 — UX Polish
 
-### Added
+#### Added
 
 - **`motorsport_calendar/gui/strings.py`** — module de centralisation de toutes les chaînes
   UI. `Strings` dataclass + singleton `STRINGS`. `Strings.from_dict()` prépare l'i18n future
@@ -1281,7 +1290,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 - **`docs/PRODUCT_VISION.md`** — vision produit (≤ 2 pages) : pourquoi / pour qui /
   philosophie / périmètre négatif.
 
-### Changed
+#### Changed
 
 - **Championnats lisibles** : les cases à cocher affichent désormais `"Formula 1"`,
   `"Formula 2"`, `"Formula 3"`, `"F1 Academy"`, `"FIA WEC"` au lieu des IDs techniques.
@@ -1303,16 +1312,16 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   `dict[str, tuple[int, int] | str]` au lieu de `dict[str, int | str]`.
   Le tuple est `(event_count, session_count)`.
 
-### Tests
+#### Tests
 
 - 36 nouveaux tests : `test_gui_strings.py` (14), `test_gui_display_names.py` (13),
   `test_gui_preferences.py` (9). Total : 695 tests.
 
 ---
 
-## [Unreleased] — Hotfix GUI-02 — FilePicker / page.services
+### Hotfix GUI-02 — FilePicker / page.services
 
-### Fixed
+#### Fixed
 
 - **`FilePicker` enregistré dans `page.services` et non `page.overlay`** : dans Flet 0.85,
   `FilePicker` hérite de `Service` (et non de `Control`). Le placer dans `page.overlay`
@@ -1323,9 +1332,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Hotfix GUI-01 — Compatibilité Flet 0.85
+### Hotfix GUI-01 — Compatibilité Flet 0.85
 
-### Fixed
+#### Fixed
 
 - **`ft.Dropdown.on_change` → `on_select`** : l'argument `on_change` a été supprimé dans
   Flet 0.80+ au profit de `on_select` pour les menus déroulants. Le sélecteur de saison
@@ -1338,9 +1347,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 22 — Desktop Edition (Phase 1)
+### Sprint 22 — Desktop Edition (Phase 1)
 
-### Added
+#### Added
 
 - **Interface graphique desktop** — `motocal-gui` (ou `python -m motorsport_calendar.gui`).
   Fenêtre Flet avec :
@@ -1362,16 +1371,16 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 - **32 tests GUI** : `test_gui_models.py` (12 tests) + `test_gui_controller.py` (20 tests).
   Aucune dépendance Flet dans les tests — `controller.py` et `models.py` sont purement Python.
 
-### Technical
+#### Technical
 
 - Flet 0.85 API : `ft.run()` (remplace `ft.app()` déprécié), `ft.Button` (remplace `ft.ElevatedButton`), `ft.Icons` / `ft.Colors` (capitalisés), `FilePicker.save_file()` async.
 - Génération dans le thread de l'event loop Flet — les appels httpx s'exécutent dans la boucle asyncio de Flet, l'anneau de progression tourne pendant les requêtes réseau.
 
 ---
 
-## [Unreleased] — Sprint QA-03
+### Sprint QA-03
 
-### Fixed
+#### Fixed
 
 - **Bug critique : F2/F3/F1 Academy retournaient systématiquement 0 événements** (ADR-017).
   `F1CalendarBaseSource._get_season()` utilisait `raw.get("events", [])` mais le dataset
@@ -1383,7 +1392,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   (copiées/collées depuis le code), ce qui faisait correspondre les tests au code incorrect
   sans jamais tester le comportement réel du dataset.
 
-### Added
+#### Added
 
 - **Fixtures réelles** `tests/fixtures/real/` : extraits minimaux (2 events) du dataset réel
   `sportstimes/f1` pour F2 (Australian + Bahrain 2025), F3 (Australian + Bahrain 2025) et
@@ -1399,7 +1408,7 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
   dans `test_cli_generate.py` empêche F2/F3/F1 Academy de faire de vrais appels réseau vers
   GitHub pendant les tests d'intégration F1/WEC.
 
-### Changed
+#### Changed
 
 - `tests/test_f1calendar_base.py` : `"events"` → `"races"` dans `_TEST_RESPONSE` et
   `_EMPTY_RESPONSE` (fixtures alignées sur le dataset réel).
@@ -1409,9 +1418,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 21.2
+### Sprint 21.2
 
-### Fixed
+#### Fixed
 
 - **Formula 2 : rétrocompatibilité des clés de sessions** (hotfix — ADR-014 mis à jour).
   Le dataset `sportstimes/f1` a renommé deux clés F2 à partir de 2025 :
@@ -1424,9 +1433,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 21
+### Sprint 21
 
-### Added
+#### Added
 
 - **F1 Academy provider** — `motocal generate-f1-academy YEAR OUTPUT.ics` génère le calendrier F1 Academy complet.
   - `F1AcademyProvider` + `F1AcademySource` (ABC) — même architecture que F1/F2/F3/WEC.
@@ -1445,9 +1454,9 @@ Détail complet : `docs/JOURNAL.md`, session Sprint 34. ADR-025 dans `docs/DECIS
 
 ---
 
-## [Unreleased] — Sprint 20
+### Sprint 20
 
-### Added
+#### Added
 
 - **Formula 3 provider** — `motocal generate-f3 YEAR OUTPUT.ics` génère le calendrier FIA F3 complet.
   - `Formula3Provider` + `Formula3Source` (ABC) — même architecture que F1/F2/WEC.

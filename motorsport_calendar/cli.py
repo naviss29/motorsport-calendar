@@ -697,10 +697,14 @@ def export(
         typer.Option("--output", "-o", help="Output file path", writable=True),
     ] = Path("calendar.ics"),
 ) -> None:
-    """Export a motorsport championship calendar to a file."""
+    """Export a championship calendar to a file. Not yet available — see 'generate-*' commands."""
+    err_console.print("Cette fonctionnalité sera disponible prochainement.")
     console.print(
-        f"[bold]Exporting[/] [cyan]{championship}[/] [bold]{year}[/]"
-        f" via [green]{provider}[/] → [yellow]{output}[/]"
+        "\nCommandes disponibles dès aujourd'hui :\n"
+        "  • [cyan]motocal providers[/] — lister les championnats disponibles\n"
+        "  • [cyan]motocal generate-f1 YEAR OUTPUT.ics[/] (generate-f2, generate-wec, ...)"
+        " — un championnat précis\n"
+        "  • [cyan]motocal generate YEAR OUTPUT.ics[/]"
+        " — tous les championnats activés en un seul fichier"
     )
-    err_console.print("No providers are registered yet.")
     raise typer.Exit(code=1)

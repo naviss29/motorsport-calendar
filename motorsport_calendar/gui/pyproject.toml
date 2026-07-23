@@ -47,7 +47,7 @@
 
 [project]
 name = "motorsport-calendar"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
     "flet>=0.80",
     "motorsport-calendar",
